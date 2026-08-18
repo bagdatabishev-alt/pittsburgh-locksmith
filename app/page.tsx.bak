@@ -11,6 +11,7 @@ export default function Home() {
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState('');
 
+  // Translations
   const t = {
     ENG: {
       title1: "Locked Out?",

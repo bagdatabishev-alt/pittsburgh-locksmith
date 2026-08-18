@@ -34,6 +34,20 @@ export default function Home() {
       zipSub: "Enter your ZIP code to check if our nearest technician is available right now.",
       zipBtn: "CHECK AVAILABILITY",
       faqTitle: "Frequently Asked Questions",
+      // Modals & Forms
+      contactTitle: "How to Contact Us?",
+      callPhoneBtn: "Call Phone",
+      whatsappBtn: "Open WhatsApp",
+      requestTitle: "Request Service",
+      serviceLabel: "Service:",
+      yourName: "Your Name *",
+      phoneNum: "Phone Number *",
+      addressLoc: "Address / Location *",
+      noteLabel: "Note (Optional)",
+      submitBtn: "SUBMIT REQUEST",
+      sending: "Sending...",
+      successMsg: "✅ Request sent successfully!",
+      errorMsg: "❌ Failed to send request.",
       services: [
         { title: 'Emergency Lockout', desc: 'Fast arrival for home, car or office lockouts.', price: 'From $45' },
         { title: 'Car Locksmith', desc: 'Key cutting & transponder programming on site.', price: 'From $49' },
@@ -62,6 +76,20 @@ export default function Home() {
       zipSub: "Введите свой ZIP код, чтобы проверить доступность мастера рядом с вами.",
       zipBtn: "ПРОВЕРИТЬ",
       faqTitle: "Часто задаваемые вопросы",
+      // Modals & Forms
+      contactTitle: "Как с нами связаться?",
+      callPhoneBtn: "Позвонить",
+      whatsappBtn: "Открыть WhatsApp",
+      requestTitle: "Заказать услугу",
+      serviceLabel: "Услуга:",
+      yourName: "Ваше Имя *",
+      phoneNum: "Номер Телефона *",
+      addressLoc: "Адрес / Местоположение *",
+      noteLabel: "Примечание (Необязательно)",
+      submitBtn: "ОТПРАВИТЬ ЗАПРОС",
+      sending: "Отправка...",
+      successMsg: "✅ Запрос успешно отправлен!",
+      errorMsg: "❌ Не удалось отправить запрос.",
       services: [
         { title: 'Emergency Lockout', desc: 'Быстрый выезд при блокировке дома, авто или офиса.', price: 'От $45' },
         { title: 'Car Locksmith', desc: 'Нарезка ключей и программирование на месте.', price: 'От $49' },
@@ -90,6 +118,20 @@ export default function Home() {
       zipSub: "Жақыныңызда маманның бар-жоғын білу үшін ZIP кодыңызды енгізіңіз.",
       zipBtn: "ТЕКСЕРУ",
       faqTitle: "Жиі қойылатын сұрақтар",
+      // Modals & Forms
+      contactTitle: "Бізбен қалай хабарласуға болады?",
+      callPhoneBtn: "Қоңырау шалу",
+      whatsappBtn: "WhatsApp ашу",
+      requestTitle: "Қызметке тапсырыс беру",
+      serviceLabel: "Қызмет:",
+      yourName: "Аты-жөніңіз *",
+      phoneNum: "Телефон нөмірі *",
+      addressLoc: "Мекенжайыңыз / Локация *",
+      noteLabel: "Қосымша ескерту (Міндетті емес)",
+      submitBtn: "ТАПСЫРЫСТЫ ЖІБЕРУ",
+      sending: "Жіберілуде...",
+      successMsg: "✅ Тапсырыс сәтті жіберілді!",
+      errorMsg: "❌ Тапсырыс жіберілмеді.",
       services: [
         { title: 'Emergency Lockout', desc: 'Үй, көлік немесе кеңсе есіктерін ашуға шұғыл келу.', price: 'Бастап $45' },
         { title: 'Car Locksmith', desc: 'Көлік кілтін кесу және бағдарламалау.', price: 'Бастап $49' },
@@ -116,9 +158,9 @@ export default function Home() {
   const handleCheckZip = (e: React.FormEvent) => {
     e.preventDefault();
     if (zipCode.length >= 5) {
-      setZipStatus(`✅ We serve your area! Average technician arrival time is 15-30 minutes.`);
+      setZipStatus(lang === 'KAZ' ? '✅ Сіздің аймақта қызмет көрсетеміз! Келу уақыты 15-30 минут.' : lang === 'RUS' ? '✅ Мы обслуживаем ваш район! Время прибытия 15-30 минут.' : '✅ We serve your area! Average arrival time is 15-30 minutes.');
     } else {
-      setZipStatus(`❌ Please enter a valid 5-digit ZIP code.`);
+      setZipStatus(lang === 'KAZ' ? '❌ Дұрыс 5 таңбалы ZIP кодты енгізіңіз.' : lang === 'RUS' ? '❌ Введите правильный 5-значный ZIP код.' : '❌ Please enter a valid 5-digit ZIP code.');
     }
   };
 
@@ -138,17 +180,17 @@ export default function Home() {
       });
 
       if (res.ok) {
-        setStatus('✅ Request sent successfully!');
+        setStatus(currentT.successMsg);
         setName('');
         setPhone('');
         setAddress('');
         setNote('');
         setTimeout(() => setModalType(null), 2000);
       } else {
-        setStatus('❌ Failed to send request.');
+        setStatus(currentT.errorMsg);
       }
     } catch (err) {
-      setStatus('❌ Connection error.');
+      setStatus(currentT.errorMsg);
     } finally {
       setLoading(false);
     }
@@ -254,7 +296,7 @@ export default function Home() {
               required
               value={zipCode}
               onChange={(e) => setZipCode(e.target.value)}
-              placeholder="Enter ZIP code"
+              placeholder="ZIP code"
               className="flex-1 bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-amber-500"
             />
             <button
@@ -291,14 +333,14 @@ export default function Home() {
             >
               ✕
             </button>
-            <h3 className="text-lg font-black mb-1">How to Contact Us?</h3>
+            <h3 className="text-lg font-black mb-1">{currentT.contactTitle}</h3>
             <p className="text-amber-500 font-extrabold text-lg mb-6">+1 (917) 349-6532</p>
             <div className="space-y-3">
               <a
                 href="tel:+19173496532"
                 className="block w-full bg-green-600 hover:bg-green-700 text-white font-extrabold py-3 rounded-xl transition text-sm shadow"
               >
-                📞 Call Phone
+                📞 {currentT.callPhoneBtn}
               </a>
               <a
                 href="https://wa.me/19173496532"
@@ -306,7 +348,7 @@ export default function Home() {
                 rel="noopener noreferrer"
                 className="block w-full bg-emerald-500 hover:bg-emerald-600 text-black font-extrabold py-3 rounded-xl transition text-sm shadow"
               >
-                💬 Open WhatsApp
+                💬 {currentT.whatsappBtn}
               </a>
             </div>
           </div>
@@ -323,12 +365,12 @@ export default function Home() {
             >
               ✕
             </button>
-            <h3 className="text-xl font-black text-amber-500 mb-1">Request Service</h3>
-            <p className="text-xs text-slate-400 mb-4">Service: <span className="text-white font-bold">{selectedService}</span></p>
+            <h3 className="text-xl font-black text-amber-500 mb-1">{currentT.requestTitle}</h3>
+            <p className="text-xs text-slate-400 mb-4">{currentT.serviceLabel} <span className="text-white font-bold">{selectedService}</span></p>
 
             <form onSubmit={handleSubmitOrder} className="space-y-3">
               <div>
-                <label className="text-xs font-bold uppercase text-slate-400 block mb-1">Your Name *</label>
+                <label className="text-xs font-bold uppercase text-slate-400 block mb-1">{currentT.yourName}</label>
                 <input
                   type="text"
                   required
@@ -339,7 +381,7 @@ export default function Home() {
                 />
               </div>
               <div>
-                <label className="text-xs font-bold uppercase text-slate-400 block mb-1">Phone Number *</label>
+                <label className="text-xs font-bold uppercase text-slate-400 block mb-1">{currentT.phoneNum}</label>
                 <input
                   type="text"
                   required
@@ -350,7 +392,7 @@ export default function Home() {
                 />
               </div>
               <div>
-                <label className="text-xs font-bold uppercase text-slate-400 block mb-1">Address / Location *</label>
+                <label className="text-xs font-bold uppercase text-slate-400 block mb-1">{currentT.addressLoc}</label>
                 <input
                   type="text"
                   required
@@ -361,7 +403,7 @@ export default function Home() {
                 />
               </div>
               <div>
-                <label className="text-xs font-bold uppercase text-slate-400 block mb-1">Note (Optional)</label>
+                <label className="text-xs font-bold uppercase text-slate-400 block mb-1">{currentT.noteLabel}</label>
                 <textarea
                   value={note}
                   onChange={(e) => setNote(e.target.value)}
@@ -376,7 +418,7 @@ export default function Home() {
                 disabled={loading}
                 className="w-full bg-amber-500 hover:bg-amber-600 text-black font-extrabold py-3.5 rounded-xl transition shadow-lg mt-2"
               >
-                {loading ? 'Sending...' : 'SUBMIT REQUEST'}
+                {loading ? currentT.sending : currentT.submitBtn}
               </button>
             </form>
 

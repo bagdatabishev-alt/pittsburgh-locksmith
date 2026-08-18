@@ -2,418 +2,250 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 
-const DICT = {
-  kk: {
-    title: 'Панель управления сайтом',
-    requests: 'Өтініштер',
-    prices: 'Бағалар',
-    settings: 'Баптаулар',
-    back: 'Сайтқа қайту',
-    logout: 'Шығу',
-    noReq: 'Әзірге өтініштер жоқ.',
-    name: 'Аты',
-    phone: 'Телефон',
-    service: 'Қызмет',
-    note: 'Мекенжай / Ескерту',
-    date: 'Уақыты',
-    actions: 'Әрекет',
-    delete: 'Жою',
-    loginTitle: 'Админ Панельге Кіру',
-    placeholder: 'Құпия сөзді енгізіңіз...',
-    loginBtn: 'Кіру',
-    pricesTitle: 'Қызмет бағаларын өңдеу',
-    saveBtn: 'Сақтау',
-    phoneLabel: 'Сайттағы телефон нөмірі:',
-    emergencyLabel: 'Төтенше жағдай блогын көрсету:'
-  },
-  ru: {
-    title: 'Панель управления сайтом',
-    requests: 'Заявки',
-    prices: 'Цены',
-    settings: 'Настройки',
-    back: 'На сайт',
-    logout: 'Выйти',
-    noReq: 'Заявок пока нет.',
-    name: 'Имя',
-    phone: 'Телефон',
-    service: 'Услуга',
-    note: 'Адрес / Заметка',
-    date: 'Дата',
-    actions: 'Действие',
-    delete: 'Удалить',
-    loginTitle: 'Вход в админ-панель',
-    placeholder: 'Введите пароль...',
-    loginBtn: 'Войти',
-    pricesTitle: 'Редактирование цен на услуги',
-    saveBtn: 'Сохранить',
-    phoneLabel: 'Телефон на сайте:',
-    emergencyLabel: 'Показывать блок экстренного вызова:'
-  },
-  en: {
-    title: 'Site Control Panel',
-    requests: 'Requests',
-    prices: 'Prices',
-    settings: 'Settings',
-    back: 'Back to Site',
-    logout: 'Logout',
-    noReq: 'No requests yet.',
-    name: 'Name',
-    phone: 'Phone',
-    service: 'Service',
-    note: 'Address / Note',
-    date: 'Date',
-    actions: 'Action',
-    delete: 'Delete',
-    loginTitle: 'Admin Panel Login',
-    placeholder: 'Enter password...',
-    loginBtn: 'Login',
-    pricesTitle: 'Edit Service Prices',
-    saveBtn: 'Save',
-    phoneLabel: 'Site Phone Number:',
-    emergencyLabel: 'Show Emergency Block:'
-  }
-};
+type Lang = 'KAZ' | 'RUS' | 'ENG';
 
 export default function AdminPage() {
-  const [lang, setLang] = useState<'kk' | 'ru' | 'en'>('kk');
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loginError, setLoginError] = useState('');
-  const [requests, setRequests] = useState<any[]>([]);
-  const [activeTab, setActiveTab] = useState<'requests' | 'prices' | 'settings'>('requests');
-  const [savedMsg, setSavedMsg] = useState('');
 
-  const [prices, setPrices] = useState({
-    '1': '29',
-    '2': '49',
-    '3': '35',
-    '4': '55',
-    '5': '25',
-    '6': '30'
-  });
+  const [activeTab, setActiveTab] = useState<'leads' | 'techs' | 'prices' | 'settings'>('leads');
+  const [lang, setLang] = useState<Lang>('KAZ');
 
-  const [phone, setPhone] = useState('+19173496532');
-  const [emergencyEnabled, setEmergencyEnabled] = useState(true);
+  const [leads, setLeads] = useState<any[]>([]);
+  const [techs, setTechs] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
 
-  const t = DICT[lang];
-
-  useEffect(() => {
-    // Егер бұрын кірген болса, автоматты түрде ашу
-    const checkAuth = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session || localStorage.getItem('site_admin_auth') === 'true') {
-        setIsAuthenticated(true);
-      }
-    };
-    checkAuth();
-  }, []);
-
-  useEffect(() => {
-    if (!isAuthenticated) return;
-
-    async function fetchData() {
-      // 1. Local storage деректерін жүктеу
-      const loadedRequests = JSON.parse(localStorage.getItem('site_requests') || '[]');
-      const loadedPrices = JSON.parse(localStorage.getItem('site_prices') || '{}');
-      const loadedPhone = localStorage.getItem('site_phone');
-      const loadedEmergency = localStorage.getItem('site_emergency');
-
-      if (loadedRequests.length > 0) setRequests(loadedRequests);
-      if (Object.keys(loadedPrices).length > 0) setPrices(prev => ({ ...prev, ...loadedPrices }));
-      if (loadedPhone) setPhone(loadedPhone);
-      if (loadedEmergency !== null) setEmergencyEnabled(loadedEmergency === 'true');
-
-      // 2. Supabase деректерін оқу және синхрондау
-      try {
-        const { data: dbOrders } = await supabase.from('orders').select('*').order('created_at', { ascending: false });
-        if (dbOrders && dbOrders.length > 0) {
-          const formatted = dbOrders.map(o => ({
-            id: o.id,
-            name: o.name,
-            phone: o.phone,
-            service: o.service,
-            address: o.address,
-            note: o.note,
-            date: o.created_at ? new Date(o.created_at).toLocaleString() : new Date().toLocaleString()
-          }));
-          setRequests(formatted);
-          localStorage.setItem('site_requests', JSON.stringify(formatted));
-        }
-
-        const { data: dbServices } = await supabase.from('services').select('*');
-        if (dbServices && dbServices.length > 0) {
-          const newPrices: Record<string, string> = { ...prices };
-          dbServices.forEach((s) => { newPrices[String(s.id)] = String(s.price); });
-          setPrices(newPrices as any);
-        }
-
-        const { data: dbSettings } = await supabase.from('settings').select('*').maybeSingle();
-        if (dbSettings) {
-          if (dbSettings.phone) setPhone(dbSettings.phone);
-          if (dbSettings.emergency_enabled !== undefined) setEmergencyEnabled(dbSettings.emergency_enabled);
-        }
-      } catch (err) {
-        console.error('Supabase admin fetch error:', err);
-      }
-    }
-
-    fetchData();
-  }, [isAuthenticated]);
-
-  const handleLogin = async (e?: React.FormEvent) => {
-    if (e) e.preventDefault();
+  // Логин тексеру
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
     setLoginError('');
 
-    // Бұрынғыдай ЖАЛҒЫЗ парольмен ТЕЗ КІРУ (admin123)
-    if (password === 'admin123' && !email) {
-      localStorage.setItem('site_admin_auth', 'true');
+    // Мастер-пароль немесе Email арқылы кіру
+    if (password === 'admin123') {
       setIsAuthenticated(true);
+      fetchData();
       return;
     }
 
-    // Email + пароль арқылы Supabase сәйкестігімен кіру
-    if (email && password) {
+    try {
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
 
-      if (!error && data.session) {
-        localStorage.setItem('site_admin_auth', 'true');
+      if (error) throw error;
+      if (data.user) {
         setIsAuthenticated(true);
-      } else if (password === 'admin123') {
-        localStorage.setItem('site_admin_auth', 'true');
-        setIsAuthenticated(true);
-      } else {
-        setLoginError('❌ Қате email немесе құпия сөз!');
+        fetchData();
       }
-    } else {
-      setLoginError('❌ Құпия сөзді енгізіңіз!');
+    } catch (err: any) {
+      setLoginError('Электронды пошта немесе құпия сөз қате!');
     }
   };
 
-  const handleLogout = async () => {
-    await supabase.auth.signOut();
-    localStorage.removeItem('site_admin_auth');
-    setIsAuthenticated(false);
-    setPassword('');
-    setEmail('');
-  };
-
-  const handleDeleteRequest = async (id: number | string) => {
-    if (confirm('Бұл тапсырысты өшіргіңіз келе ме?')) {
-      const updated = requests.filter(r => r.id !== id);
-      setRequests(updated);
-      localStorage.setItem('site_requests', JSON.stringify(updated));
-
-      try {
-        await supabase.from('orders').delete().eq('id', id);
-      } catch (err) {
-        console.error('Supabase delete error:', err);
-      }
-    }
-  };
-
-  const handleSavePrices = async () => {
-    localStorage.setItem('site_prices', JSON.stringify(prices));
-
+  // Деректерді базадан жүктеу
+  const fetchData = async () => {
+    setLoading(true);
     try {
-      const updates = Object.entries(prices).map(([id, price]) => ({
-        id: Number(id),
-        price: Number(price)
-      }));
-      await supabase.from('services').upsert(updates);
+      const { data: leadsData } = await supabase.from('leads').select('*').order('created_at', { ascending: false });
+      const { data: techsData } = await supabase.from('techs').select('*').order('created_at', { ascending: false });
+      
+      if (leadsData) setLeads(leadsData);
+      if (techsData) setTechs(techsData);
     } catch (err) {
-        console.error('Supabase prices save error:', err);
+      console.error(err);
+    } finally {
+      setLoading(false);
     }
-
-    setSavedMsg('✅ Бағалар сәтті сақталды!');
-    setTimeout(() => setSavedMsg(''), 3000);
   };
 
-  const handleSaveSettings = async () => {
-    localStorage.setItem('site_phone', phone);
-    localStorage.setItem('site_emergency', String(emergencyEnabled));
+  // Тапсырысты өшіру
+  const handleDeleteLead = async (id: number) => {
+    if (!confirm('Өтінішті өшіруге сенімдісіз бе?')) return;
+    await supabase.from('leads').delete().eq('id', id);
+    fetchData();
+  };
 
-    try {
-      await supabase.from('settings').upsert([{ id: 1, phone, emergency_enabled: emergencyEnabled }]);
-    } catch (err) {
-      console.error('Supabase settings save error:', err);
-    }
-
-    setSavedMsg('✅ Баптаулар сәтті сақталды!');
-    setTimeout(() => setSavedMsg(''), 3000);
+  // Шеберді өшіру
+  const handleDeleteTech = async (id: number) => {
+    if (!confirm('Шеберді өшіруге сенімдісіз бе?')) return;
+    await supabase.from('techs').delete().eq('id', id);
+    fetchData();
   };
 
   if (!isAuthenticated) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen bg-[#12131C] text-white p-4">
-        <div className="bg-[#181926] p-8 rounded-3xl shadow-2xl w-96 border border-slate-800">
-          <h1 className="text-2xl font-extrabold mb-6 text-center text-amber-500">{t.loginTitle}</h1>
-          <form onSubmit={handleLogin} className="space-y-4">
-            <div>
-              <input 
-                type="email" 
-                className="w-full p-3.5 bg-[#12131C] border border-slate-700 rounded-xl text-white focus:outline-none focus:border-amber-500 text-sm" 
-                placeholder="Email (міндетті емес)" 
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-              />
-            </div>
-            <div>
-              <input 
-                type="password" 
-                className="w-full p-3.5 bg-[#12131C] border border-slate-700 rounded-xl text-white focus:outline-none focus:border-amber-500 text-sm" 
-                placeholder={t.placeholder} 
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-              />
-            </div>
-
-            {loginError && (
-              <p className="text-red-400 text-xs font-bold text-center">{loginError}</p>
-            )}
-
-            <button type="submit" className="w-full bg-gradient-to-r from-amber-500 to-orange-500 text-slate-950 font-black py-3.5 rounded-xl transition shadow-lg">
-              {t.loginBtn}
-            </button>
-          </form>
-        </div>
+      <div className="min-h-screen bg-[#12131C] text-white flex items-center justify-center p-4">
+        <form onSubmit={handleLogin} className="max-w-sm w-full bg-[#181926] p-8 rounded-3xl border border-slate-800 space-y-4">
+          <h1 className="text-xl font-extrabold text-amber-500 text-center">Админ Панельге Кіру</h1>
+          <div>
+            <label className="block text-xs font-bold text-slate-400 mb-1">Email (міндетті емес)</label>
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="w-full p-3 bg-[#12131C] border border-slate-700 rounded-xl text-white text-sm focus:outline-none focus:border-amber-500"
+              placeholder="admin@example.com"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-bold text-slate-400 mb-1">Құпия сөз/Мастер-пароль *</label>
+            <input
+              type="password"
+              required
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="w-full p-3 bg-[#12131C] border border-slate-700 rounded-xl text-white text-sm focus:outline-none focus:border-amber-500"
+              placeholder="••••••••"
+            />
+          </div>
+          {loginError && <p className="text-red-400 text-xs text-center font-bold">{loginError}</p>}
+          <button type="submit" className="w-full bg-amber-500 text-slate-950 font-black py-3 rounded-xl hover:bg-amber-400 transition">
+            Кіру
+          </button>
+        </form>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#12131C] text-white p-4 md:p-8">
-      <div className="max-w-6xl mx-auto">
+    <div className="min-h-screen bg-[#12131C] text-white p-6">
+      <div className="max-w-6xl mx-auto space-y-6">
         
-        {/* ЖОҒАРҒЫ МӘЗІР */}
-        <div className="flex flex-col lg:flex-row justify-between items-center mb-8 bg-[#181926] p-6 rounded-3xl border border-slate-800 shadow-xl gap-4">
-          <h1 className="text-2xl font-extrabold text-amber-500">{t.title}</h1>
-          
-          <div className="flex flex-wrap items-center gap-3">
+        {/* Басқару Панелі Мәзірі */}
+        <div className="bg-[#181926] p-6 rounded-3xl border border-slate-800 flex flex-wrap justify-between items-center gap-4">
+          <div>
+            <h1 className="text-xl font-black text-amber-500">Панель управления сайтом</h1>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            {/* Тілдер */}
             <div className="flex bg-[#12131C] p-1 rounded-xl border border-slate-800">
-              <button onClick={() => setLang('kk')} className={`px-3 py-1 text-xs font-black rounded-lg ${lang === 'kk' ? 'bg-amber-500 text-slate-950' : 'text-slate-400'}`}>ҚАЗ</button>
-              <button onClick={() => setLang('ru')} className={`px-3 py-1 text-xs font-black rounded-lg ${lang === 'ru' ? 'bg-amber-500 text-slate-950' : 'text-slate-400'}`}>РУС</button>
-              <button onClick={() => setLang('en')} className={`px-3 py-1 text-xs font-black rounded-lg ${lang === 'en' ? 'bg-amber-500 text-slate-950' : 'text-slate-400'}`}>ENG</button>
+              {(['KAZ', 'RUS', 'ENG'] as Lang[]).map((l) => (
+                <button
+                  key={l}
+                  onClick={() => setLang(l)}
+                  className={`px-2.5 py-1 text-xs font-bold rounded-lg transition ${lang === l ? 'bg-amber-500 text-slate-950' : 'text-slate-400'}`}
+                >
+                  {l}
+                </button>
+              ))}
             </div>
-            
-            <button onClick={() => setActiveTab('requests')} className={`px-4 py-2 rounded-xl text-sm font-bold transition ${activeTab === 'requests' ? 'bg-amber-500 text-slate-950 shadow-lg' : 'bg-slate-800 text-slate-300'}`}>
-              {t.requests} ({requests.length})
+
+            {/* Навигация */}
+            <button
+              onClick={() => setActiveTab('leads')}
+              className={`px-4 py-2 text-xs font-bold rounded-xl transition ${activeTab === 'leads' ? 'bg-amber-500 text-slate-950' : 'bg-[#12131C] text-slate-300'}`}
+            >
+              Өтініштер ({leads.length})
             </button>
-            <button onClick={() => setActiveTab('prices')} className={`px-4 py-2 rounded-xl text-sm font-bold transition ${activeTab === 'prices' ? 'bg-amber-500 text-slate-950 shadow-lg' : 'bg-slate-800 text-slate-300'}`}>
-              {t.prices}
+            <button
+              onClick={() => setActiveTab('techs')}
+              className={`px-4 py-2 text-xs font-bold rounded-xl transition ${activeTab === 'techs' ? 'bg-amber-500 text-slate-950' : 'bg-[#12131C] text-slate-300'}`}
+            >
+              Шеберлер ({techs.length})
             </button>
-            <button onClick={() => setActiveTab('settings')} className={`px-4 py-2 rounded-xl text-sm font-bold transition ${activeTab === 'settings' ? 'bg-amber-500 text-slate-950 shadow-lg' : 'bg-slate-800 text-slate-300'}`}>
-              {t.settings}
+
+            <button
+              onClick={() => setIsAuthenticated(false)}
+              className="px-3 py-2 bg-red-500/20 text-red-400 text-xs font-bold rounded-xl hover:bg-red-500/30 transition"
+            >
+              Шығу
             </button>
-            
-            <a href="/" className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-sm font-bold transition">{t.back}</a>
-            <button onClick={handleLogout} className="px-4 py-2 bg-red-600/20 hover:bg-red-600 text-red-400 hover:text-white rounded-xl text-sm font-bold transition border border-red-600/30">{t.logout}</button>
           </div>
         </div>
 
-        {/* ЗАКАЗДАР БӨЛІМІ */}
-        {activeTab === 'requests' && (
-          <div className="bg-[#181926] rounded-3xl p-6 border border-slate-800 shadow-xl">
-            <h2 className="text-xl font-extrabold mb-6 text-amber-500">{t.requests}</h2>
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse">
-                <thead>
-                  <tr className="border-b border-slate-800 text-slate-400 text-xs uppercase tracking-wider">
-                    <th className="p-4">{t.name}</th>
-                    <th className="p-4">{t.phone}</th>
-                    <th className="p-4">{t.service}</th>
-                    <th className="p-4">{t.note}</th>
-                    <th className="p-4">{t.date}</th>
-                    <th className="p-4 text-center">{t.actions}</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-800/60">
-                  {requests.length === 0 ? (
+        {/* БӨЛІМ 1: ӨТІНІШТЕР (LEADS) */}
+        {activeTab === 'leads' && (
+          <div className="bg-[#181926] p-6 rounded-3xl border border-slate-800">
+            <h2 className="text-lg font-bold text-amber-500 mb-4">Өтініштер</h2>
+            {leads.length === 0 ? (
+              <p className="text-xs text-slate-400 text-center py-8">Әзірге өтініштер жоқ</p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs">
+                  <thead className="bg-[#12131C] text-slate-400 uppercase font-bold">
                     <tr>
-                      <td colSpan={6} className="text-center p-8 text-slate-500 italic">
-                        {t.noReq}
-                      </td>
+                      <th className="p-3 rounded-l-xl">Аты</th>
+                      <th className="p-3">Телефон</th>
+                      <th className="p-3">Қызмет</th>
+                      <th className="p-3">Мекенжай</th>
+                      <th className="p-3">Уақыты</th>
+                      <th className="p-3 rounded-r-xl">Әрекет</th>
                     </tr>
-                  ) : (
-                    requests.map((req) => (
-                      <tr key={req.id} className="hover:bg-slate-800/40 transition">
-                        <td className="p-4 font-bold">{req.name || '-'}</td>
-                        <td className="p-4 text-amber-400 font-bold">{req.phone || '-'}</td>
-                        <td className="p-4 text-sm">{req.service || '-'}</td>
-                        <td className="p-4 text-slate-300 text-sm">{req.address} {req.note ? `(${req.note})` : ''}</td>
-                        <td className="p-4 text-slate-500 text-xs">{req.date}</td>
-                        <td className="p-4 text-center">
-                          <button 
-                            onClick={() => handleDeleteRequest(req.id)}
-                            className="bg-red-500/20 hover:bg-red-600 text-red-400 hover:text-white px-3 py-1.5 rounded-lg text-xs font-bold transition border border-red-500/30"
+                  </thead>
+                  <tbody className="divide-y divide-slate-800 text-slate-200">
+                    {leads.map((lead) => (
+                      <tr key={lead.id}>
+                        <td className="p-3 font-bold">{lead.name || '-'}</td>
+                        <td className="p-3 text-amber-400 font-bold">{lead.phone}</td>
+                        <td className="p-3">{lead.service || '-'}</td>
+                        <td className="p-3">{lead.address || '-'}</td>
+                        <td className="p-3 text-slate-400">{new Date(lead.created_at).toLocaleString()}</td>
+                        <td className="p-3">
+                          <button
+                            onClick={() => handleDeleteLead(lead.id)}
+                            className="bg-red-500 text-white px-3 py-1 rounded-lg text-xs font-bold hover:bg-red-600 transition"
                           >
-                            {t.delete}
+                            Жою
                           </button>
                         </td>
                       </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
         )}
 
-        {/* БАҒАЛАРДЫ АУЫСТЫРУ БӨЛІМІ */}
-        {activeTab === 'prices' && (
-          <div className="bg-[#181926] rounded-3xl p-6 border border-slate-800 shadow-xl max-w-xl">
-            <h2 className="text-xl font-extrabold mb-6 text-amber-500">{t.pricesTitle}</h2>
-            <div className="space-y-4">
-              <div>
-                <label className="block text-slate-400 text-xs font-bold mb-1">1. Emergency Lockout ($):</label>
-                <input type="text" value={prices['1']} onChange={(e) => setPrices({...prices, '1': e.target.value})} className="w-full p-3 bg-[#12131C] border border-slate-700 rounded-xl text-white font-bold" />
+        {/* БӨЛІМ 2: ШЕБЕРЛЕР (TECHS) */}
+        {activeTab === 'techs' && (
+          <div className="bg-[#181926] p-6 rounded-3xl border border-slate-800">
+            <h2 className="text-lg font-bold text-amber-500 mb-4">Тіркелген Шеберлер</h2>
+            {techs.length === 0 ? (
+              <p className="text-xs text-slate-400 text-center py-8">Әзірге тіркелген шеберлер жоқ</p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs">
+                  <thead className="bg-[#12131C] text-slate-400 uppercase font-bold">
+                    <tr>
+                      <th className="p-3 rounded-l-xl">Шебер Аты</th>
+                      <th className="p-3">Телефон</th>
+                      <th className="p-3">Email</th>
+                      <th className="p-3">ZIP Кодтар</th>
+                      <th className="p-3">Статус</th>
+                      <th className="p-3 rounded-r-xl">Әрекет</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-800 text-slate-200">
+                    {techs.map((tech) => (
+                      <tr key={tech.id}>
+                        <td className="p-3 font-bold">{tech.full_name}</td>
+                        <td className="p-3 text-amber-400 font-bold">{tech.phone}</td>
+                        <td className="p-3">{tech.email}</td>
+                        <td className="p-3 font-mono">{tech.zip_codes}</td>
+                        <td className="p-3">
+                          <span className="bg-amber-500/20 text-amber-400 px-2.5 py-1 rounded-md text-[10px] font-bold uppercase">
+                            {tech.subscription_status || 'pending'}
+                          </span>
+                        </td>
+                        <td className="p-3">
+                          <button
+                            onClick={() => handleDeleteTech(tech.id)}
+                            className="bg-red-500 text-white px-3 py-1 rounded-lg text-xs font-bold hover:bg-red-600 transition"
+                          >
+                            Жою
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
-              <div>
-                <label className="block text-slate-400 text-xs font-bold mb-1">2. Car Locksmith ($):</label>
-                <input type="text" value={prices['2']} onChange={(e) => setPrices({...prices, '2': e.target.value})} className="w-full p-3 bg-[#12131C] border border-slate-700 rounded-xl text-white font-bold" />
-              </div>
-              <div>
-                <label className="block text-slate-400 text-xs font-bold mb-1">3. Residential Locksmith ($):</label>
-                <input type="text" value={prices['3']} onChange={(e) => setPrices({...prices, '3': e.target.value})} className="w-full p-3 bg-[#12131C] border border-slate-700 rounded-xl text-white font-bold" />
-              </div>
-              <div>
-                <label className="block text-slate-400 text-xs font-bold mb-1">4. Commercial Locksmith ($):</label>
-                <input type="text" value={prices['4']} onChange={(e) => setPrices({...prices, '4': e.target.value})} className="w-full p-3 bg-[#12131C] border border-slate-700 rounded-xl text-white font-bold" />
-              </div>
-              <div>
-                <label className="block text-slate-400 text-xs font-bold mb-1">5. Key Replacement ($):</label>
-                <input type="text" value={prices['5']} onChange={(e) => setPrices({...prices, '5': e.target.value})} className="w-full p-3 bg-[#12131C] border border-slate-700 rounded-xl text-white font-bold" />
-              </div>
-              <div>
-                <label className="block text-slate-400 text-xs font-bold mb-1">6. Lock Repair ($):</label>
-                <input type="text" value={prices['6']} onChange={(e) => setPrices({...prices, '6': e.target.value})} className="w-full p-3 bg-[#12131C] border border-slate-700 rounded-xl text-white font-bold" />
-              </div>
-              <button onClick={handleSavePrices} className="w-full bg-gradient-to-r from-amber-500 to-orange-500 text-slate-950 font-black py-3.5 rounded-xl transition shadow-lg mt-2">{t.saveBtn}</button>
-              {savedMsg && <p className="text-emerald-400 font-bold text-center mt-2">{savedMsg}</p>}
-            </div>
-          </div>
-        )}
-
-        {/* БАПТАУЛАР БӨЛІМІ */}
-        {activeTab === 'settings' && (
-          <div className="bg-[#181926] rounded-3xl p-6 border border-slate-800 shadow-xl max-w-xl">
-            <h2 className="text-xl font-extrabold mb-6 text-amber-500">{t.settings}</h2>
-            <div className="space-y-4">
-              <div>
-                <label className="block text-slate-400 text-xs font-bold mb-1">{t.phoneLabel}</label>
-                <input type="text" value={phone} onChange={(e) => setPhone(e.target.value)} className="w-full p-3 bg-[#12131C] border border-slate-700 rounded-xl text-white font-bold" />
-              </div>
-              <div className="flex items-center gap-3 pt-2">
-                <input type="checkbox" id="emerg" checked={emergencyEnabled} onChange={(e) => setEmergencyEnabled(e.target.checked)} className="w-5 h-5 accent-amber-500 cursor-pointer" />
-                <label htmlFor="emerg" className="text-sm font-bold text-slate-300 cursor-pointer">{t.emergencyLabel}</label>
-              </div>
-              <button onClick={handleSaveSettings} className="w-full bg-gradient-to-r from-amber-500 to-orange-500 text-slate-950 font-black py-3.5 rounded-xl transition shadow-lg mt-4">{t.saveBtn}</button>
-              {savedMsg && <p className="text-emerald-400 font-bold text-center mt-2">{savedMsg}</p>}
-            </div>
+            )}
           </div>
         )}
 

@@ -17,12 +17,6 @@ export async function POST(req: Request) {
         `🛠 *Қызмет:* ${data.service || 'Көрсетілмеген'}\n` +
         `📍 *Мекенжай:* ${data.address || ''} ${data.note || ''}\n` +
         `⏰ *Уақыты:* ${new Date().toLocaleString()}`;
-    } else if (type === 'NEW_TECH') {
-      message = `👷‍♂️ *ЖАҢА ШЕБЕР ТІРКЕЛДІ!*\n\n` +
-        `👤 *Аты-жөні:* ${data.full_name || 'Көрсетілмеген'}\n` +
-        `📞 *Телефоны:* ${data.phone || 'Көрсетілмеген'}\n` +
-        `📧 *Email:* ${data.email || 'Көрсетілмеген'}\n` +
-        `📮 *ZIP Кодтар:* ${data.zip_codes || 'Көрсетілмеген'}`;
     }
 
     const url = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`;

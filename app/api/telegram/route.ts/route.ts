@@ -8,16 +8,12 @@ export async function POST(req: Request) {
     const TELEGRAM_BOT_TOKEN = '8720762932:AAEx1H79IvkLqSnEwNvljxRwN6J1TrmI8DQ';
     const TELEGRAM_CHAT_ID = '590951027';
 
-    let message = '';
-
-    if (type === 'NEW_ORDER') {
-      message = `🚨 *ЖАҢА ТАПСЫРЫС ТҮСТІ!*\n\n` +
-        `👤 *Аты:* ${data.name || 'Көрсетілмеген'}\n` +
-        `📞 *Телефоны:* ${data.phone || 'Көрсетілмеген'}\n` +
-        `🛠 *Қызмет:* ${data.service || 'Көрсетілмеген'}\n` +
-        `📍 *Мекенжай:* ${data.address || ''} ${data.note || ''}\n` +
-        `⏰ *Уақыты:* ${new Date().toLocaleString()}`;
-    }
+    const message = `🚨 *ЖАҢА ТАПСЫРЫС ТҮСТІ!*\n\n` +
+      `👤 *Аты:* ${data.name || 'Көрсетілмеген'}\n` +
+      `📞 *Телефоны:* ${data.phone || 'Көрсетілмеген'}\n` +
+      `🛠 *Қызмет:* ${data.service || 'Көрсетілмеген'}\n` +
+      `📍 *Мекенжай:* ${data.address || 'Көрсетілмеген'}\n` +
+      `⏰ *Уақыты:* ${new Date().toLocaleString()}`;
 
     const url = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`;
     

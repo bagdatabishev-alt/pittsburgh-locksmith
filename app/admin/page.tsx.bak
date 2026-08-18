@@ -1,7 +1,11 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { createClient } from '@supabase/supabase-js';
+
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
+const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 export default function AdminPage() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -10,28 +14,24 @@ export default function AdminPage() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const supabase = createClientComponentClient();
-
-  // Сессияны тексеру
   useEffect(() => {
     const checkAuth = async () => {
       const { data: { session } } = await supabase.auth.getSession();
-      if (session) {
-        setIsAuthenticated(true);
-      } else if (localStorage.getItem('admin_authenticated') === 'true') {
+      if (session || localStorage.getItem('admin_authenticated') === 'true') {
         setIsAuthenticated(true);
       }
     };
     checkAuth();
-  }, [supabase]);
+  }, []);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setLoading(true);
 
-    // 1. Бұрынғы Мастер-Парольді тексеру (Егер Email жазылмаған болса немесе құпия сөз сәйкес келсе)
     const masterPassword = process.env.NEXT_PUBLIC_ADMIN_PASSWORD || 'admin';
+
+    // 1. Егер тек құпия сөз енгізілсе немесе мастер-пароль сәйкес келсе
     if (password === masterPassword && !email) {
       localStorage.setItem('admin_authenticated', 'true');
       setIsAuthenticated(true);
@@ -39,7 +39,7 @@ export default function AdminPage() {
       return;
     }
 
-    // 2. Supabase Email + Password тексеру
+    // 2. Supabase Email + Password арқылы кіру
     if (email && password) {
       const { data, error: authError } = await supabase.auth.signInWithPassword({
         email,
@@ -47,7 +47,6 @@ export default function AdminPage() {
       });
 
       if (authError) {
-        // Егер Supabase қате берсе, мастер-парольді де тексеріп көреміз
         if (password === masterPassword) {
           localStorage.setItem('admin_authenticated', 'true');
           setIsAuthenticated(true);
@@ -57,10 +56,8 @@ export default function AdminPage() {
       } else if (data.session) {
         setIsAuthenticated(true);
       }
-    } else if (!email && password !== masterPassword) {
-      setError('Құпия сөз қате!');
     } else {
-      setError('Мәліметтерді толық енгізіңіз');
+      setError('Мәліметтерді енгізіңіз');
     }
 
     setLoading(false);
@@ -125,7 +122,7 @@ export default function AdminPage() {
 
   return (
     <div className="min-h-screen bg-slate-950 text-white p-8">
-      <div className="max-w-6xl mx-m-auto">
+      <div className="max-w-6xl mx-auto">
         <div className="flex justify-between items-center mb-8">
           <h1 className="text-3xl font-bold">Админ Панель</h1>
           <button

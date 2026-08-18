@@ -1,6 +1,5 @@
 'use client';
 import { useState, useEffect } from 'react';
-import { supabase } from '@/lib/supabase';
 
 const DICT = {
   en: {
@@ -171,36 +170,12 @@ export default function Home() {
   const [formData, setFormData] = useState({ name: '', phone: '', address: '', note: '' });
 
   useEffect(() => {
-    async function loadData() {
-      // LocalStorage-тен оқу (резервтік)
-      const savedPhone = localStorage.getItem('site_phone');
-      const savedEmergency = localStorage.getItem('site_emergency');
-      const savedPrices = JSON.parse(localStorage.getItem('site_prices') || '{}');
-      
-      if (savedPhone) setPhone(savedPhone);
-      if (savedEmergency !== null) setEmergencyEnabled(savedEmergency === 'true');
-      setCustomPrices(savedPrices);
-
-      // Supabase-тен оқу
-      try {
-        const { data: settings } = await supabase.from('settings').select('*').maybeSingle();
-        if (settings) {
-          if (settings.phone) setPhone(settings.phone);
-          if (settings.emergency_enabled !== undefined) setEmergencyEnabled(settings.emergency_enabled);
-        }
-
-        const { data: services } = await supabase.from('services').select('*');
-        if (services && services.length > 0) {
-          const priceMap: Record<string, string> = {};
-          services.forEach((s) => { priceMap[String(s.id)] = String(s.price); });
-          setCustomPrices(priceMap);
-        }
-      } catch (err) {
-        console.error('Supabase fetch error, using local fallback:', err);
-      }
-    }
-
-    loadData();
+    const savedPhone = localStorage.getItem('site_phone');
+    const savedEmergency = localStorage.getItem('site_emergency');
+    const savedPrices = JSON.parse(localStorage.getItem('site_prices') || '{}');
+    if (savedPhone) setPhone(savedPhone);
+    if (savedEmergency !== null) setEmergencyEnabled(savedEmergency === 'true');
+    setCustomPrices(savedPrices);
   }, []);
 
   const t = DICT[lang as keyof typeof DICT] || DICT.en;
@@ -212,7 +187,7 @@ export default function Home() {
     setZipResult(t.zipSuccess);
   };
 
-  const handleFormSubmit = async (e: React.FormEvent) => {
+  const handleFormSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
     const newRequest = {
@@ -225,26 +200,9 @@ export default function Home() {
       date: new Date().toLocaleString(),
     };
 
-    // 1. LocalStorage-ке сақтау
     const existingRequests = JSON.parse(localStorage.getItem('site_requests') || '[]');
     localStorage.setItem('site_requests', JSON.stringify([newRequest, ...existingRequests]));
 
-    // 2. Supabase базасына сақтау
-    try {
-      await supabase.from('orders').insert([
-        {
-          service: newRequest.service,
-          name: newRequest.name,
-          phone: newRequest.phone,
-          address: newRequest.address,
-          note: newRequest.note,
-        }
-      ]);
-    } catch (err) {
-      console.error('Supabase order insert error:', err);
-    }
-
-    // 3. WhatsApp-қа бағыттау
     const message = `🚨 *NEW SERVICE REQUEST*%0A%0A🔑 *Service:* ${newRequest.service}%0A👤 *Name:* ${newRequest.name}%0A📞 *Phone:* ${newRequest.phone}%0A📍 *Address:* ${newRequest.address}%0A📝 *Note:* ${newRequest.note || 'None'}`;
     
     window.open(`https://wa.me/${cleanPhone}?text=${message}`, '_blank');

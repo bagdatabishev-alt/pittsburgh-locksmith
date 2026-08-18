@@ -27,7 +27,7 @@ export async function POST(req: Request) {
 
     const url = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`;
     
-    await fetch(url, {
+    const res = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -37,7 +37,8 @@ export async function POST(req: Request) {
       })
     });
 
-    return NextResponse.json({ success: true });
+    const resData = await res.json();
+    return NextResponse.json({ success: true, telegram: resData });
   } catch (err: any) {
     return NextResponse.json({ success: false, error: err.message }, { status: 500 });
   }

@@ -5,13 +5,8 @@ export async function POST(req: Request) {
     const body = await req.json();
     const { type, data } = body;
 
-    // Өзіңіздің Telegram Bot Token мен Chat ID мәліметтерін осы жерге қоясыз:
-    const TELEGRAM_BOT_TOKEN = 'YOUR_BOT_TOKEN_HERE';
-    const TELEGRAM_CHAT_ID = 'YOUR_CHAT_ID_HERE';
-
-    if (!TELEGRAM_BOT_TOKEN || TELEGRAM_BOT_TOKEN === 'YOUR_BOT_TOKEN_HERE') {
-      return NextResponse.json({ success: false, error: 'Telegram keys not configured' }, { status: 400 });
-    }
+    const TELEGRAM_BOT_TOKEN = '8720762932:AAEx1H79IvkLqSnEwNvljxRwN6J1TrmI8DQ';
+    const TELEGRAM_CHAT_ID = '590951027';
 
     let message = '';
 

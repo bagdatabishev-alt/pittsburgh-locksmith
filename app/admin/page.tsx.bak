@@ -21,7 +21,8 @@ const DICT = {
     actions: 'Әрекет',
     delete: 'Жою',
     loginTitle: 'Админ Панельге Кіру',
-    placeholder: 'Құпия сөзді енгізіңіз...',
+    placeholderPass: 'Құпия сөзді енгізіңіз...',
+    placeholderEmail: 'Email енгізіңіз...',
     loginBtn: 'Кіру',
     pricesTitle: 'Қызмет бағаларын өңдеу',
     saveBtn: 'Сақтау',
@@ -31,6 +32,8 @@ const DICT = {
     techEmail: 'Email',
     techZips: 'ZIP Кодтар',
     techStatus: 'Статус',
+    usePass: 'Мастер-парольмен кіру',
+    useEmail: 'Email/Парольмен кіру (Supabase Auth)'
   },
   ru: {
     title: 'Панель управления сайтом',
@@ -50,7 +53,8 @@ const DICT = {
     actions: 'Действие',
     delete: 'Удалить',
     loginTitle: 'Вход в админ-панель',
-    placeholder: 'Введите пароль...',
+    placeholderPass: 'Введите пароль...',
+    placeholderEmail: 'Введите Email...',
     loginBtn: 'Войти',
     pricesTitle: 'Редактирование цен на услуги',
     saveBtn: 'Сохранить',
@@ -60,6 +64,8 @@ const DICT = {
     techEmail: 'Email',
     techZips: 'ZIP коды',
     techStatus: 'Статус',
+    usePass: 'Вход по мастер-паролю',
+    useEmail: 'Вход по Email/Паролю (Supabase Auth)'
   },
   en: {
     title: 'Site Control Panel',
@@ -79,7 +85,8 @@ const DICT = {
     actions: 'Action',
     delete: 'Delete',
     loginTitle: 'Admin Panel Login',
-    placeholder: 'Enter password...',
+    placeholderPass: 'Enter password...',
+    placeholderEmail: 'Enter email...',
     loginBtn: 'Login',
     pricesTitle: 'Edit Service Prices',
     saveBtn: 'Save',
@@ -89,13 +96,19 @@ const DICT = {
     techEmail: 'Email',
     techZips: 'ZIP Codes',
     techStatus: 'Status',
+    usePass: 'Login with Master Password',
+    useEmail: 'Login with Email/Password (Supabase Auth)'
   }
 };
 
 export default function AdminPage() {
   const [lang, setLang] = useState<'kk' | 'ru' | 'en'>('kk');
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [loginMode, setLoginMode] = useState<'pass' | 'email'>('pass');
+  
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  
   const [requests, setRequests] = useState<any[]>([]);
   const [techs, setTechs] = useState<any[]>([]);
   const [activeTab, setActiveTab] = useState<'requests' | 'techs' | 'prices' | 'settings'>('requests');
@@ -116,10 +129,20 @@ export default function AdminPage() {
   const t = DICT[lang];
 
   useEffect(() => {
+    // Егер бұрын Supabase сессиясы болса тексеру
+    async function checkAuth() {
+      const { data } = await supabase.auth.getSession();
+      if (data.session) {
+        setIsAuthenticated(true);
+      }
+    }
+    checkAuth();
+  }, []);
+
+  useEffect(() => {
     if (!isAuthenticated) return;
 
     async function fetchData() {
-      // 1. Local storage деректерін жүктеу
       const loadedRequests = JSON.parse(localStorage.getItem('site_requests') || '[]');
       const loadedPrices = JSON.parse(localStorage.getItem('site_prices') || '{}');
       const loadedPhone = localStorage.getItem('site_phone');
@@ -130,7 +153,6 @@ export default function AdminPage() {
       if (loadedPhone) setPhone(loadedPhone);
       if (loadedEmergency !== null) setEmergencyEnabled(loadedEmergency === 'true');
 
-      // 2. Supabase деректерін оқу және синхрондау
       try {
         const { data: dbOrders } = await supabase.from('orders').select('*').order('created_at', { ascending: false });
         if (dbOrders && dbOrders.length > 0) {
@@ -147,7 +169,6 @@ export default function AdminPage() {
           localStorage.setItem('site_requests', JSON.stringify(formatted));
         }
 
-        // Шеберлерді Supabase-тен жүктеу
         const { data: dbTechs } = await supabase.from('techs').select('*').order('created_at', { ascending: false });
         if (dbTechs) {
           setTechs(dbTechs);
@@ -173,17 +194,32 @@ export default function AdminPage() {
     fetchData();
   }, [isAuthenticated]);
 
-  const handleLogin = () => {
-    if (password === 'admin123') {
-      setIsAuthenticated(true);
+  const handleLogin = async () => {
+    if (loginMode === 'pass') {
+      if (password === 'admin123') {
+        setIsAuthenticated(true);
+      } else {
+        alert('❌ Қате құпия сөз!');
+      }
     } else {
-      alert('❌ Қате құпия сөз!');
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password
+      });
+
+      if (error) {
+        alert('❌ Еңгізілген Email немесе Пароль қате: ' + error.message);
+      } else {
+        setIsAuthenticated(true);
+      }
     }
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
     setIsAuthenticated(false);
     setPassword('');
+    setEmail('');
   };
 
   const handleDeleteRequest = async (id: number | string) => {
@@ -248,14 +284,31 @@ export default function AdminPage() {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen bg-[#12131C] text-white p-4">
         <div className="bg-[#181926] p-8 rounded-3xl shadow-2xl w-96 border border-slate-800">
-          <h1 className="text-2xl font-extrabold mb-6 text-center text-amber-500">{t.loginTitle}</h1>
+          <h1 className="text-2xl font-extrabold mb-4 text-center text-amber-500">{t.loginTitle}</h1>
+          
+          <div className="flex gap-2 mb-6 bg-[#12131C] p-1 rounded-xl border border-slate-800 text-[11px] font-bold">
+            <button onClick={() => setLoginMode('pass')} className={`flex-1 py-2 rounded-lg ${loginMode === 'pass' ? 'bg-amber-500 text-slate-950' : 'text-slate-400'}`}>{t.usePass}</button>
+            <button onClick={() => setLoginMode('email')} className={`flex-1 py-2 rounded-lg ${loginMode === 'email' ? 'bg-amber-500 text-slate-950' : 'text-slate-400'}`}>{t.useEmail}</button>
+          </div>
+
+          {loginMode === 'email' && (
+            <input 
+              type="email" 
+              className="w-full p-3.5 bg-[#12131C] border border-slate-700 rounded-xl mb-3 text-white focus:outline-none focus:border-amber-500" 
+              placeholder={t.placeholderEmail} 
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+            />
+          )}
+
           <input 
             type="password" 
             className="w-full p-3.5 bg-[#12131C] border border-slate-700 rounded-xl mb-4 text-white focus:outline-none focus:border-amber-500" 
-            placeholder={t.placeholder} 
+            placeholder={t.placeholderPass} 
             value={password}
             onChange={(e) => setPassword(e.target.value)}
           />
+          
           <button onClick={handleLogin} className="w-full bg-gradient-to-r from-amber-500 to-orange-500 text-slate-950 font-black py-3.5 rounded-xl transition shadow-lg">{t.loginBtn}</button>
         </div>
       </div>
@@ -414,7 +467,7 @@ export default function AdminPage() {
               </div>
               <div>
                 <label className="block text-slate-400 text-xs font-bold mb-1">4. Commercial Locksmith ($):</label>
-                <input type="text" value={prices['4']} onChange={(e) => setPrices({...prices, '4': e.target.value})} className="w-full p-3 bg-[#12131C] border border-slate-700 rounded-xl text-white font-bold" />
+                <input type="text" value={prices['4']} onChange={(e) => setPrices({...prices, '4': e.target.value})} className="w-full p-[#12131C] border border-slate-700 rounded-xl text-white font-bold" />
               </div>
               <div>
                 <label className="block text-slate-400 text-xs font-bold mb-1">5. Key Replacement ($):</label>

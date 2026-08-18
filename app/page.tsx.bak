@@ -35,10 +35,18 @@ const DICT = {
     addressLabel: 'Address / Location *',
     addressPlaceholder: 'Street name or ZIP',
     noteLabel: 'Note (Optional)',
-    notePlaceholder: 'Locked out of car, jammed lock, etc...',
+    defaultNotePlaceholder: 'Describe your issue...',
     sendWaBtn: '💬 SEND TO WHATSAPP',
     generalRequest: 'General Request',
     mobileRequest: 'Mobile Request',
+    placeholders: {
+      '1': 'Example: Key snapped inside the lock, door is locked...',
+      '2': 'Example: Toyota Camry 2018, all keys lost...',
+      '3': 'Example: Need to replace or repair house lock...',
+      '4': 'Example: Install high-security or code lock for office...',
+      '5': 'Example: Need duplicate or spare key made...',
+      '6': 'Example: Lock mechanism is jammed or damaged...'
+    },
     services: [
       { id: '1', title: 'Emergency Lockout', icon: '🚨', desc: 'Fast arrival for home, car or office lockouts.', defaultPrice: '$29' },
       { id: '2', title: 'Car Locksmith', icon: '🚗', desc: 'Key cutting & transponder programming on site.', defaultPrice: '$49' },
@@ -85,10 +93,18 @@ const DICT = {
     addressLabel: 'Адрес / Локация *',
     addressPlaceholder: 'Улица или ZIP-код',
     noteLabel: 'Примечание (необязательно)',
-    notePlaceholder: 'Захлопнулась дверь, заклинил замок и т.д...',
+    defaultNotePlaceholder: 'Опишите вашу проблему...',
     sendWaBtn: '💬 ОТПРАВИТЬ В WHATSAPP',
     generalRequest: 'Общий запрос',
     mobileRequest: 'Мобильный запрос',
+    placeholders: {
+      '1': 'Пример: Ключ сломался внутри замка, дверь заперта...',
+      '2': 'Пример: Toyota Camry 2018, утеряны все ключи...',
+      '3': 'Пример: Замена или ремонт замка в квартире...',
+      '4': 'Пример: Установка кодового или кодового замка в офис...',
+      '5': 'Пример: Нужен дубликат или изготовление нового ключа...',
+      '6': 'Пример: Заклинило механизм или поврежден замок...'
+    },
     services: [
       { id: '1', title: 'Экстренное вскрытие', icon: '🚨', desc: 'Быстрый выезд для вскрытия домов, авто и офисов.', defaultPrice: '$29' },
       { id: '2', title: 'Автослесарь', icon: '🚗', desc: 'Изготовление ключей и прошивка чипов на месте.', defaultPrice: '$49' },
@@ -135,10 +151,18 @@ const DICT = {
     addressLabel: 'Мекенжайыңыз / Аймақ *',
     addressPlaceholder: 'Көше аты немесе ZIP-код',
     noteLabel: 'Қосымша ақпарат (міндетті емес)',
-    notePlaceholder: 'Көлік есігі жабылып қалды, құлып кептеліп қалды...',
+    defaultNotePlaceholder: 'Мәселеңізді сипаттаңыз...',
     sendWaBtn: '💬 WHATSAPP-ҚА ЖІБЕРУ',
     generalRequest: 'Жалпы тапсырыс',
     mobileRequest: 'Мобильді тапсырыс',
+    placeholders: {
+      '1': 'Мысалы: Кілт ішінде сынып қалды, есік құлыптаулы...',
+      '2': 'Мысалы: Toyota Camry 2018, барлық кілті жоғалды...',
+      '3': 'Мысалы: Пәтер есігінің замгын ауыстыру керек...',
+      '4': 'Мысалы: Офис есігіне кодовый замок орнату...',
+      '5': 'Мысалы: Кілттің дубликатын немесе жаңасын жасау...',
+      '6': 'Мысалы: Құлып механизімі кептеліп қалды...'
+    },
     services: [
       { id: '1', title: 'Шұғыл есік ашу', icon: '🚨', desc: 'Үй, көлік немесе офис есігін жедел ашу қызметі.', defaultPrice: '$29' },
       { id: '2', title: 'Көлік кілттері', icon: '🚗', desc: 'Кілт жасау және чиптерді орнында бағдарламалау.', defaultPrice: '$49' },
@@ -163,7 +187,7 @@ export default function Home() {
   
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isContactModalOpen, setIsContactModalOpen] = useState(false);
-  const [selectedService, setSelectedService] = useState('');
+  const [selectedService, setSelectedService] = useState<{ id: string; title: string } | null>(null);
   
   const [zipInput, setZipInput] = useState('');
   const [zipResult, setZipResult] = useState<string | null>(null);
@@ -172,7 +196,6 @@ export default function Home() {
 
   useEffect(() => {
     async function loadData() {
-      // LocalStorage-тен оқу (резервтік)
       const savedPhone = localStorage.getItem('site_phone');
       const savedEmergency = localStorage.getItem('site_emergency');
       const savedPrices = JSON.parse(localStorage.getItem('site_prices') || '{}');
@@ -181,7 +204,6 @@ export default function Home() {
       if (savedEmergency !== null) setEmergencyEnabled(savedEmergency === 'true');
       setCustomPrices(savedPrices);
 
-      // Supabase-тен оқу
       try {
         const { data: settings } = await supabase.from('settings').select('*').maybeSingle();
         if (settings) {
@@ -206,6 +228,13 @@ export default function Home() {
   const t = DICT[lang as keyof typeof DICT] || DICT.en;
   const cleanPhone = phone.replace(/[^0-9]/g, '');
 
+  const getDynamicPlaceholder = () => {
+    if (selectedService && selectedService.id && t.placeholders[selectedService.id as keyof typeof t.placeholders]) {
+      return t.placeholders[selectedService.id as keyof typeof t.placeholders];
+    }
+    return t.defaultNotePlaceholder;
+  };
+
   const handleZipCheck = (e: React.FormEvent) => {
     e.preventDefault();
     if (!zipInput.trim()) return;
@@ -215,9 +244,11 @@ export default function Home() {
   const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    const serviceTitle = selectedService ? selectedService.title : t.generalRequest;
+
     const newRequest = {
       id: Date.now(),
-      service: selectedService || t.generalRequest,
+      service: serviceTitle,
       name: formData.name,
       phone: formData.phone,
       address: formData.address,
@@ -225,11 +256,9 @@ export default function Home() {
       date: new Date().toLocaleString(),
     };
 
-    // 1. LocalStorage-ке сақтау
     const existingRequests = JSON.parse(localStorage.getItem('site_requests') || '[]');
     localStorage.setItem('site_requests', JSON.stringify([newRequest, ...existingRequests]));
 
-    // 2. Supabase базасына сақтау
     try {
       await supabase.from('orders').insert([
         {
@@ -244,7 +273,6 @@ export default function Home() {
       console.error('Supabase order insert error:', err);
     }
 
-    // 3. WhatsApp-қа бағыттау
     const message = `🚨 *NEW SERVICE REQUEST*%0A%0A🔑 *Service:* ${newRequest.service}%0A👤 *Name:* ${newRequest.name}%0A📞 *Phone:* ${newRequest.phone}%0A📍 *Address:* ${newRequest.address}%0A📝 *Note:* ${newRequest.note || 'None'}`;
     
     window.open(`https://wa.me/${cleanPhone}?text=${message}`, '_blank');
@@ -302,7 +330,7 @@ export default function Home() {
             {t.callNow}
           </button>
           <button
-            onClick={() => { setSelectedService(t.generalRequest); setIsModalOpen(true); }}
+            onClick={() => { setSelectedService({ id: '0', title: t.generalRequest }); setIsModalOpen(true); }}
             className="bg-[#1E202E] border border-slate-700/60 text-slate-200 font-bold py-4 px-8 rounded-2xl text-base hover:bg-slate-800 transition"
           >
             {t.requestService}
@@ -357,7 +385,7 @@ export default function Home() {
                   <p className="text-slate-400 text-sm">{srv.desc}</p>
                 </div>
                 <button
-                  onClick={() => { setSelectedService(srv.title); setIsModalOpen(true); }}
+                  onClick={() => { setSelectedService({ id: srv.id, title: srv.title }); setIsModalOpen(true); }}
                   className="w-full bg-slate-800 hover:bg-amber-500 hover:text-slate-950 text-slate-200 font-bold py-3 rounded-xl transition text-sm"
                 >
                   {t.requestService}
@@ -430,7 +458,7 @@ export default function Home() {
           💬 {t.bottomText}
         </a>
         <button
-          onClick={() => { setSelectedService(t.mobileRequest); setIsModalOpen(true); }}
+          onClick={() => { setSelectedService({ id: '0', title: t.mobileRequest }); setIsModalOpen(true); }}
           className="flex-1 bg-gradient-to-r from-amber-500 to-orange-500 text-slate-950 py-3 mx-1 rounded-xl text-center font-black text-xs flex items-center justify-center gap-1 active:scale-95 transition"
         >
           🔑 {t.bottomRequest}
@@ -460,7 +488,7 @@ export default function Home() {
             <h3 className="text-2xl font-extrabold text-amber-500">{t.formModalTitle}</h3>
             {selectedService && (
               <p className="text-xs bg-amber-500/10 text-amber-400 border border-amber-500/30 p-2 rounded-lg font-semibold">
-                {t.serviceLabel}: {selectedService}
+                {t.serviceLabel}: {selectedService.title}
               </p>
             )}
 
@@ -479,7 +507,7 @@ export default function Home() {
               </div>
               <div>
                 <label className="text-xs font-bold text-slate-400">{t.noteLabel}</label>
-                <textarea rows={2} placeholder={t.notePlaceholder} value={formData.note} onChange={(e) => setFormData({ ...formData, note: e.target.value })} className="w-full bg-[#12131C] border border-slate-700 rounded-xl p-3 text-sm text-white focus:outline-none focus:border-amber-500 mt-1" />
+                <textarea rows={2} placeholder={getDynamicPlaceholder()} value={formData.note} onChange={(e) => setFormData({ ...formData, note: e.target.value })} className="w-full bg-[#12131C] border border-slate-700 rounded-xl p-3 text-sm text-white focus:outline-none focus:border-amber-500 mt-1" />
               </div>
               <button type="submit" className="w-full bg-gradient-to-r from-amber-500 to-orange-500 text-slate-950 font-black py-3.5 rounded-xl text-base shadow-lg hover:opacity-90 transition pt-2 flex items-center justify-center gap-2">
                 {t.sendWaBtn}

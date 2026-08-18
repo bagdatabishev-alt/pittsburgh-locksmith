@@ -1,57 +1,29 @@
 'use client';
 
-import React, { useState } from 'react';
+import { useState } from 'react';
 
 export default function Home() {
-  const [lang, setLang] = useState<'KAZ' | 'RUS' | 'ENG'>('ENG');
+  const [selectedService, setSelectedService] = useState<string | null>(null);
+  const [name, setName] = useState('');
+  const [phone, setPhone] = useState('');
+  const [address, setAddress] = useState('');
   const [loading, setLoading] = useState(false);
-  const [success, setSuccess] = useState(false);
+  const [status, setStatus] = useState('');
 
-  const [formData, setFormData] = useState({
-    name: '',
-    phone: '',
-    service: 'Car Lockout',
-    address: '',
-    note: ''
-  });
-
-  const t = {
-    KAZ: {
-      title: 'Pittsburgh Locksmith',
-      subtitle: 'Жылдам шұғыл кекілді қызмет көрсету',
-      name: 'Сіздің атыңыз',
-      phone: 'Телефон нөміріңіз',
-      service: 'Қызмет түрі',
-      address: 'Мекенжайыңыз',
-      submit: 'Тапсырыс беру',
-      success: '✅ Тапсырыс сәтті жіберілді! Жақында хабарласамыз.'
-    },
-    RUS: {
-      title: 'Pittsburgh Locksmith',
-      subtitle: 'Быстрая экстренная помощь замочного мастера',
-      name: 'Ваше имя',
-      phone: 'Номер телефона',
-      service: 'Услуга',
-      address: 'Адрес / Локация',
-      submit: 'Отправить заявку',
-      success: '✅ Заявка успешно отправлена! Скоро свяжемся.'
-    },
-    ENG: {
-      title: 'Pittsburgh Locksmith',
-      subtitle: 'Request fast local emergency service',
-      name: 'Your Name',
-      phone: 'Phone Number',
-      service: 'Service Needed',
-      address: 'Address / Location',
-      submit: 'Send Request',
-      success: '✅ Request sent! We will contact you shortly.'
-    }
-  }[lang];
+  const handleRequestService = (serviceName: string) => {
+    setSelectedService(serviceName);
+    window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!selectedService) {
+      setStatus('⚠️ Please select a service first by clicking "Request Service" on any card.');
+      return;
+    }
+
     setLoading(true);
-    setSuccess(false);
+    setStatus('');
 
     try {
       const res = await fetch('/api/telegram', {
@@ -59,105 +31,164 @@ export default function Home() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           type: 'NEW_ORDER',
-          data: formData
+          data: {
+            name,
+            phone,
+            service: selectedService,
+            address
+          }
         })
       });
 
       if (res.ok) {
-        setSuccess(true);
-        setFormData({ name: '', phone: '', service: 'Car Lockout', address: '', note: '' });
+        setStatus('✅ Request sent successfully! We will contact you shortly.');
+        setName('');
+        setPhone('');
+        setAddress('');
+        setSelectedService(null);
+      } else {
+        setStatus('❌ Failed to send request. Please try again.');
       }
     } catch (err) {
-      console.error(err);
+      setStatus('❌ Connection error.');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <main className="min-h-screen bg-slate-900 text-white p-6 flex flex-col items-center justify-center">
-      {/* Language Switcher */}
-      <div className="flex gap-2 mb-6">
-        {(['KAZ', 'RUS', 'ENG'] as const).map((l) => (
-          <button
-            key={l}
-            onClick={() => setLang(l)}
-            className={`px-3 py-1 text-xs font-bold rounded border ${
-              lang === l ? 'bg-amber-500 text-slate-950 border-amber-500' : 'bg-slate-800 text-slate-400 border-slate-700'
-            }`}
+    <main className="min-h-screen bg-slate-950 text-white font-sans selection:bg-amber-500 selection:text-black">
+      {/* Hero Section */}
+      <section className="py-16 px-4 text-center max-w-4xl mx-auto">
+        <h1 className="text-4xl md:text-6xl font-black tracking-tight mb-2">
+          Locked Out? <span className="text-amber-500">We Can Help.</span>
+        </h1>
+        <p className="text-slate-400 text-sm md:text-base mb-8 max-w-xl mx-auto">
+          Professional locksmith service for homes, cars, businesses and emergency lockouts.
+        </p>
+
+        <div className="flex flex-wrap justify-center gap-4 mb-10">
+          <a
+            href="tel:+19173496532"
+            className="bg-amber-500 hover:bg-amber-600 text-black font-extrabold px-8 py-3.5 rounded-xl shadow-lg transition"
           >
-            {l}
-          </button>
-        ))}
-      </div>
+            CALL NOW
+          </a>
+          <a
+            href="#services"
+            className="bg-slate-800 hover:bg-slate-700 text-white font-bold px-8 py-3.5 rounded-xl border border-slate-700 transition"
+          >
+            REQUEST SERVICE
+          </a>
+        </div>
 
-      <div className="max-w-md w-full bg-slate-800 p-8 rounded-xl shadow-2xl border border-slate-700">
-        <h1 className="text-2xl font-bold text-amber-500 mb-2 text-center">{t.title}</h1>
-        <p className="text-slate-400 text-sm mb-6 text-center">{t.subtitle}</p>
-
-        {success && (
-          <div className="bg-emerald-500/20 border border-emerald-500 text-emerald-300 p-3 rounded mb-4 text-center text-sm">
-            {t.success}
+        {/* Urgent Red Banner */}
+        <div className="bg-red-600/90 border border-red-500 rounded-2xl p-4 md:p-5 flex flex-col md:flex-row items-center justify-between shadow-xl gap-4">
+          <div className="text-left">
+            <h3 className="font-black text-lg">Locked Out Right Now?</h3>
+            <p className="text-xs text-red-100">Don't spend time searching. Call us immediately for rapid dispatch.</p>
           </div>
-        )}
+          <a
+            href="tel:+19173496532"
+            className="bg-white hover:bg-slate-100 text-red-600 font-extrabold px-6 py-2.5 rounded-xl text-sm shadow transition shrink-0"
+          >
+            📞 CALL NOW
+          </a>
+        </div>
+      </section>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-xs uppercase text-slate-400 mb-1">{t.name}</label>
-            <input
-              type="text"
-              required
-              className="w-full bg-slate-900 border border-slate-700 rounded p-2 text-white focus:outline-none focus:border-amber-500"
-              value={formData.name}
-              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-            />
+      {/* Services Grid */}
+      <section id="services" className="max-w-5xl mx-auto px-4 pb-16">
+        <div className="text-center mb-8">
+          <h2 className="text-2xl md:text-3xl font-extrabold mb-2">What Do You Need Help With?</h2>
+          <div className="inline-block bg-amber-500/10 border border-amber-500/30 px-4 py-1.5 rounded-full text-amber-400 text-xs font-semibold">
+            ⚠️ Note: Final exact price is determined on-site by the technician based on lock complexity.
           </div>
+        </div>
 
-          <div>
-            <label className="block text-xs uppercase text-slate-400 mb-1">{t.phone}</label>
-            <input
-              type="tel"
-              required
-              className="w-full bg-slate-900 border border-slate-700 rounded p-2 text-white focus:outline-none focus:border-amber-500"
-              value={formData.phone}
-              onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-            />
-          </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {[
+            { title: 'Emergency Lockout', desc: 'Fast arrival for home, car or office lockouts.', price: 'From $45' },
+            { title: 'Car Locksmith', desc: 'Key cutting & transponder programming on site.', price: 'From $49' },
+            { title: 'Residential Locksmith', desc: 'House lock replacement & repair services.', price: 'From $35' },
+            { title: 'Commercial Locksmith', desc: 'High-security locks for businesses & offices.', price: 'From $55' },
+            { title: 'Key Replacement', desc: 'Duplicate or replacement keys made quickly.', price: 'From $25' },
+            { title: 'Lock Repair', desc: 'Fix damaged or jammed locks easily.', price: 'From $30' }
+          ].map((s, idx) => (
+            <div key={idx} className="bg-slate-900 border border-slate-800 rounded-2xl p-5 flex flex-col justify-between hover:border-amber-500/50 transition">
+              <div>
+                <div className="flex justify-between items-start mb-3">
+                  <h3 className="font-bold text-lg">{s.title}</h3>
+                  <span className="bg-amber-500/10 text-amber-400 text-xs font-bold px-2.5 py-1 rounded-lg border border-amber-500/20">
+                    {s.price}
+                  </span>
+                </div>
+                <p className="text-slate-400 text-xs mb-6">{s.desc}</p>
+              </div>
+              <button
+                onClick={() => handleRequestService(s.title)}
+                className="w-full bg-slate-800 hover:bg-amber-500 hover:text-black font-bold text-xs py-2.5 rounded-xl border border-slate-700 transition"
+              >
+                REQUEST SERVICE
+              </button>
+            </div>
+          ))}
+        </div>
 
-          <div>
-            <label className="block text-xs uppercase text-slate-400 mb-1">{t.service}</label>
-            <select
-              className="w-full bg-slate-900 border border-slate-700 rounded p-2 text-white focus:outline-none focus:border-amber-500"
-              value={formData.service}
-              onChange={(e) => setFormData({ ...formData, service: e.target.value })}
+        {/* Request Form Section */}
+        <div className="mt-12 bg-slate-900 border border-slate-800 rounded-2xl p-6 md:p-8 max-w-xl mx-auto shadow-2xl">
+          <h3 className="text-xl font-black text-amber-500 mb-1 text-center">
+            {selectedService ? `Selected: ${selectedService}` : 'Fill out details to request service'}
+          </h3>
+          <p className="text-xs text-slate-400 text-center mb-6">We will dispatch a technician immediately.</p>
+
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <label className="text-xs font-bold uppercase text-slate-400 block mb-1">Your Name *</label>
+              <input
+                type="text"
+                required
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="John Doe"
+                className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-sm outline-none focus:border-amber-500"
+              />
+            </div>
+            <div>
+              <label className="text-xs font-bold uppercase text-slate-400 block mb-1">Phone Number *</label>
+              <input
+                type="text"
+                required
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                placeholder="+1 (555) 000-0000"
+                className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-sm outline-none focus:border-amber-500"
+              />
+            </div>
+            <div>
+              <label className="text-xs font-bold uppercase text-slate-400 block mb-1">Address / Location *</label>
+              <input
+                type="text"
+                required
+                value={address}
+                onChange={(e) => setAddress(e.target.value)}
+                placeholder="123 Main St, Pittsburgh"
+                className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-sm outline-none focus:border-amber-500"
+              />
+            </div>
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full bg-amber-500 hover:bg-amber-600 text-black font-extrabold py-3.5 rounded-xl transition shadow-lg"
             >
-              <option value="Car Lockout">Car Lockout</option>
-              <option value="House Lockout">House Lockout</option>
-              <option value="Lock Change">Lock Change</option>
-              <option value="Key Duplication">Key Duplication</option>
-            </select>
-          </div>
+              {loading ? 'Sending Request...' : 'Send Request to Telegram'}
+            </button>
+          </form>
 
-          <div>
-            <label className="block text-xs uppercase text-slate-400 mb-1">{t.address}</label>
-            <input
-              type="text"
-              required
-              className="w-full bg-slate-900 border border-slate-700 rounded p-2 text-white focus:outline-none focus:border-amber-500"
-              value={formData.address}
-              onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-            />
-          </div>
-
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold py-3 rounded transition-all"
-          >
-            {loading ? '...' : t.submit}
-          </button>
-        </form>
-      </div>
+          {status && <p className="mt-4 text-center text-sm font-bold">{status}</p>}
+        </div>
+      </section>
     </main>
   );
 }

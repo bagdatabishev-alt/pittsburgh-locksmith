@@ -13,28 +13,30 @@ export default function AdminPage() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  
+  const [activeTab, setActiveTab] = useState<'bookings' | 'services' | 'settings'>('bookings');
   const [bookings, setBookings] = useState<any[]>([]);
+  const [services, setServices] = useState<any[]>([]);
 
   useEffect(() => {
     const checkAuth = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (session || localStorage.getItem('admin_authenticated') === 'true') {
         setIsAuthenticated(true);
-        fetchBookings();
+        loadData();
       }
     };
     checkAuth();
   }, []);
 
-  const fetchBookings = async () => {
-    const { data, error } = await supabase
-      .from('bookings')
-      .select('*')
-      .order('created_at', { ascending: false });
+  const loadData = async () => {
+    // Өтінімдерді жүктеу
+    const { data: bData } = await supabase.from('bookings').select('*').order('created_at', { ascending: false });
+    if (bData) setBookings(bData);
 
-    if (!error && data) {
-      setBookings(data);
-    }
+    // Қызметтер мен прайс-листі жүктеу
+    const { data: sData } = await supabase.from('services').select('*').order('id', { ascending: true });
+    if (sData) setServices(sData);
   };
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -47,7 +49,7 @@ export default function AdminPage() {
     if (password === masterPassword && !email) {
       localStorage.setItem('admin_authenticated', 'true');
       setIsAuthenticated(true);
-      fetchBookings();
+      loadData();
       setLoading(false);
       return;
     }
@@ -62,13 +64,13 @@ export default function AdminPage() {
         if (password === masterPassword) {
           localStorage.setItem('admin_authenticated', 'true');
           setIsAuthenticated(true);
-          fetchBookings();
+          loadData();
         } else {
           setError('Email немесе құпия сөз қате!');
         }
       } else if (data.session) {
         setIsAuthenticated(true);
-        fetchBookings();
+        loadData();
       }
     } else {
       setError('Мәліметтерді енгізіңіз');
@@ -137,10 +139,11 @@ export default function AdminPage() {
   return (
     <div className="min-h-screen bg-slate-950 text-white p-6 md:p-10">
       <div className="max-w-7xl mx-auto">
+        {/* Бас тақырып және Шығу батырмасы */}
         <div className="flex justify-between items-center mb-8 border-b border-slate-800 pb-4">
           <div>
-            <h1 className="text-3xl font-bold">Админ Панель</h1>
-            <p className="text-slate-400 text-sm mt-1">Клиенттердің өтінімдері мен бронды басқару</p>
+            <h1 className="text-3xl font-bold text-amber-500">Админ Панель</h1>
+            <p className="text-slate-400 text-sm mt-1">Сайтты және өтінімдерді басқару орталығы</p>
           </div>
           <button
             onClick={handleLogout}
@@ -150,38 +153,100 @@ export default function AdminPage() {
           </button>
         </div>
 
-        {/* Тапсырыстар кестесі */}
-        <div className="bg-slate-900 border border-slate-800 rounded-xl p-6">
-          <h2 className="text-xl font-semibold mb-4 text-amber-500">Келіп түскен тапсырыстар</h2>
-          {bookings.length === 0 ? (
-            <p className="text-slate-500 text-center py-8">Әзірге өтінімдер жоқ</p>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-sm text-slate-300">
-                <thead className="bg-slate-800 text-slate-200 uppercase text-xs">
-                  <tr>
-                    <th className="p-3">Аты-жөні</th>
-                    <th className="p-3">Телефон</th>
-                    <th className="p-3">Қызмет түрі</th>
-                    <th className="p-3">Уақыты</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-800">
-                  {bookings.map((item, idx) => (
-                    <tr key={idx} className="hover:bg-slate-800/50">
-                      <td className="p-3 font-medium text-white">{item.name || '-'}</td>
-                      <td className="p-3">{item.phone || '-'}</td>
-                      <td className="p-3">{item.service || '-'}</td>
-                      <td className="p-3 text-slate-400">
-                        {item.created_at ? new Date(item.created_at).toLocaleString() : '-'}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
+        {/* Функцияларды ауыстыру навигациясы */}
+        <div className="flex space-x-4 mb-6 border-b border-slate-800 pb-2">
+          <button
+            onClick={() => setActiveTab('bookings')}
+            className={`px-4 py-2 font-medium rounded-lg transition ${
+              activeTab === 'bookings' ? 'bg-amber-500 text-black' : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            Клиенттердің Өтінімдері ({bookings.length})
+          </button>
+          <button
+            onClick={() => setActiveTab('services')}
+            className={`px-4 py-2 font-medium rounded-lg transition ${
+              activeTab === 'services' ? 'bg-amber-500 text-black' : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            Қызметтер & Бағалар
+          </button>
+          <button
+            onClick={() => setActiveTab('settings')}
+            className={`px-4 py-2 font-medium rounded-lg transition ${
+              activeTab === 'settings' ? 'bg-amber-500 text-black' : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            Баптаулар
+          </button>
         </div>
+
+        {/* TAB 1: Өтінімдер кестесі */}
+        {activeTab === 'bookings' && (
+          <div className="bg-slate-900 border border-slate-800 rounded-xl p-6">
+            <h2 className="text-xl font-semibold mb-4 text-white">Барлық Өтінімдер</h2>
+            {bookings.length === 0 ? (
+              <p className="text-slate-500 text-center py-8">Әзірге өтінімдер келіп түскен жоқ</p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-sm text-slate-300">
+                  <thead className="bg-slate-800 text-slate-200 uppercase text-xs">
+                    <tr>
+                      <th className="p-3">Аты</th>
+                      <th className="p-3">Телефон</th>
+                      <th className="p-3">Қызмет</th>
+                      <th className="p-3">Мекенжай/Сипаттама</th>
+                      <th className="p-3">Уақыты</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-800">
+                    {bookings.map((item, idx) => (
+                      <tr key={idx} className="hover:bg-slate-800/50">
+                        <td className="p-3 font-medium text-white">{item.name || '-'}</td>
+                        <td className="p-3 text-amber-400">{item.phone || '-'}</td>
+                        <td className="p-3">{item.service || '-'}</td>
+                        <td className="p-3">{item.message || item.address || '-'}</td>
+                        <td className="p-3 text-slate-400">
+                          {item.created_at ? new Date(item.created_at).toLocaleString() : '-'}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* TAB 2: Қызметтер мен прайс-лист */}
+        {activeTab === 'services' && (
+          <div className="bg-slate-900 border border-slate-800 rounded-xl p-6">
+            <h2 className="text-xl font-semibold mb-4 text-white">Прайс-лист және Қызметтер</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {services.length === 0 ? (
+                <p className="text-slate-500 col-span-2">Қызметтер тізімі базада дайын</p>
+              ) : (
+                services.map((serv, i) => (
+                  <div key={i} className="bg-slate-800 p-4 rounded-lg border border-slate-700">
+                    <h3 className="font-bold text-amber-400">{serv.title || serv.name}</h3>
+                    <p className="text-sm text-slate-300 mt-1">{serv.description}</p>
+                    <p className="text-sm font-semibold text-white mt-2">Бағасы: {serv.price}</p>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* TAB 3: Баптаулар */}
+        {activeTab === 'settings' && (
+          <div className="bg-slate-900 border border-slate-800 rounded-xl p-6">
+            <h2 className="text-xl font-semibold mb-4 text-white">Жүйелік баптаулар</h2>
+            <p className="text-slate-400 text-sm">
+              Админ панель Supabase базасымен белсенді байланысты. Электронды пошта: <span className="text-amber-400">bagdat-1976@mail.ru</span>
+            </p>
+          </div>
+        )}
       </div>
     </div>
   );

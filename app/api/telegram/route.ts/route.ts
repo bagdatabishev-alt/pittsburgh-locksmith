@@ -1,0 +1,44 @@
+import { NextResponse } from 'next/server';
+
+export async function POST(req: Request) {
+  try {
+    const body = await req.json();
+    const { type, data } = body;
+
+    const TELEGRAM_BOT_TOKEN = '8720762932:AAEx1H79IvkLqSnEwNvljxRwN6J1TrmI8DQ';
+    const TELEGRAM_CHAT_ID = '590951027';
+
+    let message = '';
+
+    if (type === 'NEW_ORDER') {
+      message = `🚨 *ЖАҢА ТАПСЫРЫС ТҮСТІ!*\n\n` +
+        `👤 *Аты:* ${data.name || 'Көрсетілмеген'}\n` +
+        `📞 *Телефоны:* ${data.phone || 'Көрсетілмеген'}\n` +
+        `🛠 *Қызмет:* ${data.service || 'Көрсетілмеген'}\n` +
+        `📍 *Мекенжай:* ${data.address || ''} ${data.note || ''}\n` +
+        `⏰ *Уақыты:* ${new Date().toLocaleString()}`;
+    } else if (type === 'NEW_TECH') {
+      message = `👷‍♂️ *ЖАҢА ШЕБЕР ТІРКЕЛДІ!*\n\n` +
+        `👤 *Аты-жөні:* ${data.full_name || 'Көрсетілмеген'}\n` +
+        `📞 *Телефоны:* ${data.phone || 'Көрсетілмеген'}\n` +
+        `📧 *Email:* ${data.email || 'Көрсетілмеген'}\n` +
+        `📮 *ZIP Кодтар:* ${data.zip_codes || 'Көрсетілмеген'}`;
+    }
+
+    const url = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`;
+    
+    await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        chat_id: TELEGRAM_CHAT_ID,
+        text: message,
+        parse_mode: 'Markdown'
+      })
+    });
+
+    return NextResponse.json({ success: true });
+  } catch (err: any) {
+    return NextResponse.json({ success: false, error: err.message }, { status: 500 });
+  }
+}

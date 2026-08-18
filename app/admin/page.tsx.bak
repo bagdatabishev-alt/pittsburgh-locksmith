@@ -1,5 +1,6 @@
 'use client';
 import { useState, useEffect } from 'react';
+import { supabase } from '@/lib/supabase';
 
 const DICT = {
   kk: {
@@ -81,7 +82,6 @@ export default function AdminPage() {
   const [activeTab, setActiveTab] = useState<'requests' | 'prices' | 'settings'>('requests');
   const [savedMsg, setSavedMsg] = useState('');
 
-  // Бағалар
   const [prices, setPrices] = useState({
     '1': '29',
     '2': '49',
@@ -91,23 +91,61 @@ export default function AdminPage() {
     '6': '30'
   });
 
-  // Баптаулар
   const [phone, setPhone] = useState('+19173496532');
   const [emergencyEnabled, setEmergencyEnabled] = useState(true);
 
   const t = DICT[lang];
 
   useEffect(() => {
-    // Жергілікті деректерді жүктеу
-    const loadedRequests = JSON.parse(localStorage.getItem('site_requests') || '[]');
-    const loadedPrices = JSON.parse(localStorage.getItem('site_prices') || '{}');
-    const loadedPhone = localStorage.getItem('site_phone');
-    const loadedEmergency = localStorage.getItem('site_emergency');
+    if (!isAuthenticated) return;
 
-    setRequests(loadedRequests);
-    if (Object.keys(loadedPrices).length > 0) setPrices(prev => ({ ...prev, ...loadedPrices }));
-    if (loadedPhone) setPhone(loadedPhone);
-    if (loadedEmergency !== null) setEmergencyEnabled(loadedEmergency === 'true');
+    async function fetchData() {
+      // 1. Local storage деректерін жүктеу
+      const loadedRequests = JSON.parse(localStorage.getItem('site_requests') || '[]');
+      const loadedPrices = JSON.parse(localStorage.getItem('site_prices') || '{}');
+      const loadedPhone = localStorage.getItem('site_phone');
+      const loadedEmergency = localStorage.getItem('site_emergency');
+
+      if (loadedRequests.length > 0) setRequests(loadedRequests);
+      if (Object.keys(loadedPrices).length > 0) setPrices(prev => ({ ...prev, ...loadedPrices }));
+      if (loadedPhone) setPhone(loadedPhone);
+      if (loadedEmergency !== null) setEmergencyEnabled(loadedEmergency === 'true');
+
+      // 2. Supabase деректерін оқу және синхрондау
+      try {
+        const { data: dbOrders } = await supabase.from('orders').select('*').order('created_at', { ascending: false });
+        if (dbOrders && dbOrders.length > 0) {
+          const formatted = dbOrders.map(o => ({
+            id: o.id,
+            name: o.name,
+            phone: o.phone,
+            service: o.service,
+            address: o.address,
+            note: o.note,
+            date: o.created_at ? new Date(o.created_at).toLocaleString() : new Date().toLocaleString()
+          }));
+          setRequests(formatted);
+          localStorage.setItem('site_requests', JSON.stringify(formatted));
+        }
+
+        const { data: dbServices } = await supabase.from('services').select('*');
+        if (dbServices && dbServices.length > 0) {
+          const newPrices: Record<string, string> = { ...prices };
+          dbServices.forEach((s) => { newPrices[String(s.id)] = String(s.price); });
+          setPrices(newPrices as any);
+        }
+
+        const { data: dbSettings } = await supabase.from('settings').select('*').maybeSingle();
+        if (dbSettings) {
+          if (dbSettings.phone) setPhone(dbSettings.phone);
+          if (dbSettings.emergency_enabled !== undefined) setEmergencyEnabled(dbSettings.emergency_enabled);
+        }
+      } catch (err) {
+        console.error('Supabase admin fetch error:', err);
+      }
+    }
+
+    fetchData();
   }, [isAuthenticated]);
 
   const handleLogin = () => {
@@ -123,23 +161,47 @@ export default function AdminPage() {
     setPassword('');
   };
 
-  const handleDeleteRequest = (id: number) => {
+  const handleDeleteRequest = async (id: number | string) => {
     if (confirm('Бұл тапсырысты өшіргіңіз келе ме?')) {
       const updated = requests.filter(r => r.id !== id);
       setRequests(updated);
       localStorage.setItem('site_requests', JSON.stringify(updated));
+
+      try {
+        await supabase.from('orders').delete().eq('id', id);
+      } catch (err) {
+        console.error('Supabase delete error:', err);
+      }
     }
   };
 
-  const handleSavePrices = () => {
+  const handleSavePrices = async () => {
     localStorage.setItem('site_prices', JSON.stringify(prices));
+
+    try {
+      const updates = Object.entries(prices).map(([id, price]) => ({
+        id: Number(id),
+        price: Number(price)
+      }));
+      await supabase.from('services').upsert(updates);
+    } catch (err) {
+      console.error('Supabase prices save error:', err);
+    }
+
     setSavedMsg('✅ Бағалар сәтті сақталды!');
     setTimeout(() => setSavedMsg(''), 3000);
   };
 
-  const handleSaveSettings = () => {
+  const handleSaveSettings = async () => {
     localStorage.setItem('site_phone', phone);
     localStorage.setItem('site_emergency', String(emergencyEnabled));
+
+    try {
+      await supabase.from('settings').upsert([{ id: 1, phone, emergency_enabled: emergencyEnabled }]);
+    } catch (err) {
+      console.error('Supabase settings save error:', err);
+    }
+
     setSavedMsg('✅ Баптаулар сәтті сақталды!');
     setTimeout(() => setSavedMsg(''), 3000);
   };
@@ -171,7 +233,6 @@ export default function AdminPage() {
           <h1 className="text-2xl font-extrabold text-amber-500">{t.title}</h1>
           
           <div className="flex flex-wrap items-center gap-3">
-            {/* Тіл ауыстыру */}
             <div className="flex bg-[#12131C] p-1 rounded-xl border border-slate-800">
               <button onClick={() => setLang('kk')} className={`px-3 py-1 text-xs font-black rounded-lg ${lang === 'kk' ? 'bg-amber-500 text-slate-950' : 'text-slate-400'}`}>ҚАЗ</button>
               <button onClick={() => setLang('ru')} className={`px-3 py-1 text-xs font-black rounded-lg ${lang === 'ru' ? 'bg-amber-500 text-slate-950' : 'text-slate-400'}`}>РУС</button>

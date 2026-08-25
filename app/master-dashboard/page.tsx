@@ -135,7 +135,7 @@ export default function MasterDashboard() {
 
   const fetchMasterOrders = async (currentMaster: any) => {
     try {
-      // Supabase-тен requests кестесіндегі осы мастерге тиесілі немесе ZIP коды сәйкес келетін заказдарды аламыз
+      // Supabase-тен requests кестесінен осы мастердің ID-іне тікелей жіберілген (tech_id) немесе ZIP коды сәйкес заказдарды аламыз
       const { data: dbOrders, error } = await supabase
         .from('requests')
         .select('*')
@@ -147,15 +147,13 @@ export default function MasterDashboard() {
       }
 
       if (dbOrders) {
-        // Мұнда тек осы мастердің ID-іне жіберілген (tech_id == master.id) немесе 
-        // мекенжайы/ZIP коды мастердің тізімінде бар заказдар сүзіліп алынады
         const masterIdStr = String(currentMaster.id);
         const masterZips = currentMaster.zip_codes ? currentMaster.zip_codes.split(',').map((z: string) => z.trim()) : [];
 
         const filtered = dbOrders.filter(order => {
           const isAssignedToTech = String(order.tech_id) === masterIdStr;
           const isMatchingZip = masterZips.includes(String(order.address));
-          // Егер админ тікелей осы мастерге жіберсе немесе ZIP коды сәйкес келсе көрсетеміз
+          // Егер админ тікелей осы мастерге жіберсе немесе ZIP коды сай келсе көрсетеміз
           return isAssignedToTech || isMatchingZip;
         });
 

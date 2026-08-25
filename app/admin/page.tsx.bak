@@ -159,7 +159,7 @@ export default function AdminPage() {
       if (loadedEmergency !== null) setEmergencyEnabled(loadedEmergency === 'true');
 
       try {
-        const { data: dbOrders } = await supabase.from('orders').select('*').order('created_at', { ascending: false });
+        const { data: dbOrders } = await supabase.from('requests').select('*').order('created_at', { ascending: false });
         if (dbOrders && dbOrders.length > 0) {
           const formatted = dbOrders.map(o => ({
             id: o.id,
@@ -235,7 +235,7 @@ export default function AdminPage() {
       localStorage.setItem('site_requests', JSON.stringify(updated));
 
       try {
-        await supabase.from('orders').delete().eq('id', id);
+        await supabase.from('requests').delete().eq('id', id);
       } catch (err) {
         console.error('Supabase delete error:', err);
       }
@@ -253,7 +253,7 @@ export default function AdminPage() {
     localStorage.setItem('site_requests', JSON.stringify(updated));
 
     try {
-      const { error } = await supabase.from('orders').update({ tech_id: techId }).eq('id', orderId);
+      const { error } = await supabase.from('requests').update({ tech_id: techId }).eq('id', orderId);
       if (error) {
         console.error('Supabase update order error:', error);
         alert('❌ Қате кетті: ' + error.message);
@@ -388,7 +388,7 @@ export default function AdminPage() {
           </div>
         </div>
 
-        {/* ЗАКАЗДАР БӨЛІМІ (МАСТЕРГЕ ЖІБЕРУ МҮМКІНДІГІМЕН) */}
+        {/* ЗАКАЗДАР БӨЛІМІ */}
         {activeTab === 'requests' && (
           <div className="bg-[#181926] rounded-3xl p-6 border border-slate-800 shadow-xl">
             <h2 className="text-xl font-extrabold mb-6 text-amber-500">{t.requests}</h2>

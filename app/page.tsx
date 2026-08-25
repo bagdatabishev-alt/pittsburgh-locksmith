@@ -260,7 +260,8 @@ export default function Home() {
     localStorage.setItem('site_requests', JSON.stringify([newRequest, ...existingRequests]));
 
     try {
-      await supabase.from('orders').insert([
+      // Деректерді админ панель көре алатындай 'requests' кестесіне жазамыз[cite: 5]
+      await supabase.from('requests').insert([
         {
           service: newRequest.service,
           name: newRequest.name,
@@ -270,7 +271,7 @@ export default function Home() {
         }
       ]);
     } catch (err) {
-      console.error('Supabase order insert error:', err);
+      console.error('Supabase request insert error:', err);
     }
 
     const message = `🚨 *NEW SERVICE REQUEST*%0A%0A🔑 *Service:* ${newRequest.service}%0A👤 *Name:* ${newRequest.name}%0A📞 *Phone:* ${newRequest.phone}%0A📍 *Address:* ${newRequest.address}%0A📝 *Note:* ${newRequest.note || 'None'}`;

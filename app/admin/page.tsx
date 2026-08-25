@@ -159,8 +159,10 @@ export default function AdminPage() {
       if (loadedEmergency !== null) setEmergencyEnabled(loadedEmergency === 'true');
 
       try {
-        const { data: dbOrders } = await supabase.from('requests').select('*').order('created_at', { ascending: false });
-        if (dbOrders && dbOrders.length > 0) {
+        const { data: dbOrders, error: ordersError } = await supabase.from('requests').select('*').order('created_at', { ascending: false });
+        if (ordersError) {
+          console.error('Supabase requests error:', ordersError);
+        } else if (dbOrders && dbOrders.length > 0) {
           const formatted = dbOrders.map(o => ({
             id: o.id,
             name: o.name,

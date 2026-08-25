@@ -5,7 +5,7 @@ export async function POST(req: Request) {
     const body = await req.json();
     const { type, data } = body;
 
-    const TELEGRAM_BOT_TOKEN = '8949098129:AAHVnHASlxklh9I4n2kmpb8shZeLXRoCiX0';
+    const TELEGRAM_BOT_TOKEN = '8720762932:AAEx1H79IvkLqSnEwNvljxRwN6J1TrmI8DQ';
     const TELEGRAM_CHAT_ID = '590951027';
 
     const message = `🚨 *ЖАҢА ТАПСЫРЫС ТҮСТІ!*\n\n` +

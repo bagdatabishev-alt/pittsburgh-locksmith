@@ -129,6 +129,7 @@ export default function AdminPage() {
   const t = DICT[lang];
 
   useEffect(() => {
+    // Егер бұрын Supabase сессиясы болса тексеру
     async function checkAuth() {
       const { data } = await supabase.auth.getSession();
       if (data.session) {
@@ -245,17 +246,6 @@ export default function AdminPage() {
       } catch (err) {
         console.error('Supabase delete tech error:', err);
       }
-    }
-  };
-
-  const handleStatusChange = async (id: number | string, newStatus: string) => {
-    const updated = techs.map(t => t.id === id ? { ...t, subscription_status: newStatus } : t);
-    setTechs(updated);
-
-    try {
-      await supabase.from('techs').update({ subscription_status: newStatus }).eq('id', id);
-    } catch (err) {
-      console.error('Supabase status update error:', err);
     }
   };
 
@@ -406,7 +396,7 @@ export default function AdminPage() {
           </div>
         )}
 
-        {/* ШЕБЕРЛЕР БӨЛІМІ (СТАТУС АУЫСТЫРУ КӨМЕГІМЕН) */}
+        {/* ШЕБЕРЛЕР БӨЛІМІ */}
         {activeTab === 'techs' && (
           <div className="bg-[#181926] rounded-3xl p-6 border border-slate-800 shadow-xl">
             <h2 className="text-xl font-extrabold mb-6 text-amber-500">{t.techs}</h2>
@@ -437,15 +427,9 @@ export default function AdminPage() {
                         <td className="p-4 text-sm text-slate-300">{tech.email || '-'}</td>
                         <td className="p-4 text-sm font-mono text-slate-300">{tech.zip_codes || '-'}</td>
                         <td className="p-4">
-                          <select 
-                            value={tech.subscription_status || 'pending'} 
-                            onChange={(e) => handleStatusChange(tech.id, e.target.value)}
-                            className="bg-[#12131C] border border-slate-700 text-amber-400 font-bold px-2.5 py-1 rounded-lg text-xs focus:outline-none focus:border-amber-500 cursor-pointer"
-                          >
-                            <option value="pending">PENDING</option>
-                            <option value="active">ACTIVE</option>
-                            <option value="rejected">REJECTED</option>
-                          </select>
+                          <span className="bg-amber-500/20 text-amber-400 px-2.5 py-1 rounded-md text-[10px] font-bold uppercase border border-amber-500/30">
+                            {tech.subscription_status || 'pending'}
+                          </span>
                         </td>
                         <td className="p-4 text-center">
                           <button 
@@ -483,7 +467,7 @@ export default function AdminPage() {
               </div>
               <div>
                 <label className="block text-slate-400 text-xs font-bold mb-1">4. Commercial Locksmith ($):</label>
-                <input type="text" value={prices['4']} onChange={(e) => setPrices({...prices, '4': e.target.value})} className="w-full p-3 bg-[#12131C] border border-slate-700 rounded-xl text-white font-bold" />
+                <input type="text" value={prices['4']} onChange={(e) => setPrices({...prices, '4': e.target.value})} className="w-full p-[#12131C] border border-slate-700 rounded-xl text-white font-bold" />
               </div>
               <div>
                 <label className="block text-slate-400 text-xs font-bold mb-1">5. Key Replacement ($):</label>

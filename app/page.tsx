@@ -1,7 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import { createClient } from '@supabase/supabase-js';
 
 export default function Home() {
   const [lang, setLang] = useState<'KAZ' | 'RUS' | 'ENG'>('ENG');
@@ -35,19 +34,6 @@ export default function Home() {
       zipSub: "Enter your ZIP code to check if our nearest technician is available right now.",
       zipBtn: "CHECK AVAILABILITY",
       faqTitle: "Frequently Asked Questions",
-      contactTitle: "How to Contact Us?",
-      callPhoneBtn: "Call Phone",
-      whatsappBtn: "Open WhatsApp",
-      requestTitle: "Request Service",
-      serviceLabel: "Service:",
-      yourName: "Your Name *",
-      phoneNum: "Phone Number *",
-      addressLoc: "Address / Location *",
-      noteLabel: "Note (Optional)",
-      submitBtn: "SUBMIT REQUEST",
-      sending: "Sending...",
-      successMsg: "✅ Request sent successfully!",
-      errorMsg: "❌ Failed to send request.",
       services: [
         { title: 'Emergency Lockout', desc: 'Fast arrival for home, car or office lockouts.', price: 'From $45' },
         { title: 'Car Locksmith', desc: 'Key cutting & transponder programming on site.', price: 'From $49' },
@@ -76,26 +62,13 @@ export default function Home() {
       zipSub: "Введите свой ZIP код, чтобы проверить доступность мастера рядом с вами.",
       zipBtn: "ПРОВЕРИТЬ",
       faqTitle: "Часто задаваемые вопросы",
-      contactTitle: "Как с нами связаться?",
-      callPhoneBtn: "Позвонить",
-      whatsappBtn: "Открыть WhatsApp",
-      requestTitle: "Заказать услугу",
-      serviceLabel: "Услуга:",
-      yourName: "Ваше Имя *",
-      phoneNum: "Номер Телефона *",
-      addressLoc: "Адрес / Местоположение *",
-      noteLabel: "Примечание (Необязательно)",
-      submitBtn: "ОТПРАВИТЬ ЗАПРОС",
-      sending: "Отправка...",
-      successMsg: "✅ Запрос успешно отправлен!",
-      errorMsg: "❌ Не удалось отправить запрос.",
       services: [
-        { title: 'Экстренное вскрытие', desc: 'Быстрый выезд при блокировке дома, авто или офиса.', price: 'От $45' },
-        { title: 'Автослесарь', desc: 'Нарезка ключей и программирование на месте.', price: 'От $49' },
-        { title: 'Замки для дома', desc: 'Замена и ремонт дверных замков в доме.', price: 'От $35' },
-        { title: 'Замки для бизнеса', desc: 'Замки повышенной безопасности для бизнеса.', price: 'От $55' },
-        { title: 'Замена ключей', desc: 'Дубликаты или замена ключей.', price: 'От $25' },
-        { title: 'Ремонт замков', desc: 'Ремонт поврежденных или заклинивших замков.', price: 'От $30' }
+        { title: 'Emergency Lockout', desc: 'Быстрый выезд при блокировке дома, авто или офиса.', price: 'От $45' },
+        { title: 'Car Locksmith', desc: 'Нарезка ключей и программирование на месте.', price: 'От $49' },
+        { title: 'Residential Locksmith', desc: 'Замена и ремонт дверных замков в доме.', price: 'От $35' },
+        { title: 'Commercial Locksmith', desc: 'Замки повышенной безопасности для бизнеса.', price: 'От $55' },
+        { title: 'Key Replacement', desc: 'Дубликаты или замена ключей.', price: 'От $25' },
+        { title: 'Lock Repair', desc: 'Ремонт поврежденных или заклинивших замков.', price: 'От $30' }
       ],
       faqs: [
         { q: "Как быстро приезжает мастер?", a: "Среднее время прибытия составляет 15-30 минут в зависимости от вашего местоположения." },
@@ -117,26 +90,13 @@ export default function Home() {
       zipSub: "Жақыныңызда маманның бар-жоғын білу үшін ZIP кодыңызды енгізіңіз.",
       zipBtn: "ТЕКСЕРУ",
       faqTitle: "Жиі қойылатын сұрақтар",
-      contactTitle: "Бізбен қалай хабарласуға болады?",
-      callPhoneBtn: "Қоңырау шалу",
-      whatsappBtn: "WhatsApp ашу",
-      requestTitle: "Қызметке тапсырыс беру",
-      serviceLabel: "Қызмет:",
-      yourName: "Аты-жөніңіз *",
-      phoneNum: "Телефон нөмірі *",
-      addressLoc: "Мекенжайыңыз / Локация *",
-      noteLabel: "Қосымша ескерту (Міндетті емес)",
-      submitBtn: "ТАПСЫРЫСТЫ ЖІБЕРУ",
-      sending: "Жіберілуде...",
-      successMsg: "✅ Тапсырыс сәтті жіберілді!",
-      errorMsg: "❌ Тапсырыс жіберілмеді.",
       services: [
-        { title: 'Шұғыл есік ашу', desc: 'Үй, көлік немесе кеңсе есіктерін ашуға шұғыл келу.', price: 'Бастап $45' },
-        { title: 'Көлік кілттері', desc: 'Көлік кілтін кесу және бағдарламалау.', price: 'Бастап $49' },
-        { title: 'Үйге арналған құлыптар', desc: 'Үй құлыптарын ауыстыру және жөндеу қызметтері.', price: 'Бастап $35' },
-        { title: 'Бизнеске арналған құлыптар', desc: 'Бизнес пен кеңселерге арналған сенімді құлыптар.', price: 'Бастап $55' },
-        { title: 'Кілттерді ауыстыру', desc: 'Кілттердің көшірмесін тез арада жасау.', price: 'Бастап $25' },
-        { title: 'Құлыпты жөндеу', desc: 'Сынған немесе істемейтін құлыптарды жөндеу.', price: 'Бастап $30' }
+        { title: 'Emergency Lockout', desc: 'Үй, көлік немесе кеңсе есіктерін ашуға шұғыл келу.', price: 'Бастап $45' },
+        { title: 'Car Locksmith', desc: 'Көлік кілтін кесу және бағдарламалау.', price: 'Бастап $49' },
+        { title: 'Residential Locksmith', desc: 'Үй құлыптарын ауыстыру және жөндеу қызметтері.', price: 'Бастап $35' },
+        { title: 'Commercial Locksmith', desc: 'Бизнес пен кеңселерге арналған сенімді құлыптар.', price: 'Бастап $55' },
+        { title: 'Key Replacement', desc: 'Кілттердің көшірмесін тез арада жасау.', price: 'Бастап $25' },
+        { title: 'Lock Repair', desc: 'Сынған немесе істемейтін құлыптарды жөндеу.', price: 'Бастап $30' }
       ],
       faqs: [
         { q: "Маман қанша уақытта келеді?", a: "Орташа келу уақыты орналасқан жеріңізге байланысты 15-30 минутты құрайды." },
@@ -156,9 +116,9 @@ export default function Home() {
   const handleCheckZip = (e: React.FormEvent) => {
     e.preventDefault();
     if (zipCode.length >= 5) {
-      setZipStatus(lang === 'KAZ' ? '✅ Сіздің аймақта қызмет көрсетеміз! Келу уақыты 15-30 минут.' : lang === 'RUS' ? '✅ Мы обслуживаем ваш район! Время прибытия 15-30 минут.' : '✅ We serve your area! Average arrival time is 15-30 minutes.');
+      setZipStatus(`✅ We serve your area! Average technician arrival time is 15-30 minutes.`);
     } else {
-      setZipStatus(lang === 'KAZ' ? '❌ Дұрыс 5 таңбалы ZIP кодты енгізіңіз.' : lang === 'RUS' ? '❌ Введите правильный 5-значный ZIP код.' : '❌ Please enter a valid 5-digit ZIP code.');
+      setZipStatus(`❌ Please enter a valid 5-digit ZIP code.`);
     }
   };
 
@@ -168,34 +128,27 @@ export default function Home() {
     setStatus('');
 
     try {
-      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-      const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
-      
-      const supabase = createClient(supabaseUrl, supabaseAnonKey);
+      const res = await fetch('/api/telegram', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: 'NEW_ORDER',
+          data: { name, phone, service: selectedService, address, note }
+        })
+      });
 
-      const { error } = await supabase.from('requests').insert([
-        {
-          name: name,
-          phone: phone,
-          service: selectedService,
-          address: address,
-          note: note,
-        }
-      ]);
-
-      if (error) {
-        throw error;
+      if (res.ok) {
+        setStatus('✅ Request sent successfully!');
+        setName('');
+        setPhone('');
+        setAddress('');
+        setNote('');
+        setTimeout(() => setModalType(null), 2000);
+      } else {
+        setStatus('❌ Failed to send request.');
       }
-
-      setStatus(currentT.successMsg);
-      setName('');
-      setPhone('');
-      setAddress('');
-      setNote('');
-      setTimeout(() => setModalType(null), 2000);
     } catch (err) {
-      console.error(err);
-      setStatus(currentT.errorMsg);
+      setStatus('❌ Connection error.');
     } finally {
       setLoading(false);
     }
@@ -203,6 +156,7 @@ export default function Home() {
 
   return (
     <main className="min-h-screen bg-slate-950 text-white font-sans selection:bg-amber-500 selection:text-black">
+      {/* Top Bar with Language Switcher */}
       <header className="flex justify-between items-center px-6 py-4 max-w-6xl mx-auto">
         <span className="font-black text-amber-500 tracking-wider">PITTSBURGH LOCKSMITH</span>
         <div className="flex gap-2">
@@ -220,6 +174,7 @@ export default function Home() {
         </div>
       </header>
 
+      {/* Hero Section */}
       <section className="py-12 px-4 text-center max-w-4xl mx-auto">
         <h1 className="text-4xl md:text-6xl font-black tracking-tight mb-2">
           {currentT.title1} <span className="text-amber-500">{currentT.title2}</span>
@@ -243,6 +198,7 @@ export default function Home() {
           </button>
         </div>
 
+        {/* Urgent Red Banner */}
         <div className="bg-red-600/90 border border-red-500 rounded-2xl p-4 md:p-5 flex flex-col md:flex-row items-center justify-between shadow-xl gap-4">
           <div className="text-left">
             <h3 className="font-black text-lg">{currentT.bannerTitle}</h3>
@@ -257,6 +213,7 @@ export default function Home() {
         </div>
       </section>
 
+      {/* Services Grid */}
       <section className="max-w-5xl mx-auto px-4 pb-16">
         <div className="text-center mb-8">
           <h2 className="text-2xl md:text-3xl font-extrabold mb-2">{currentT.whatNeeded}</h2>
@@ -287,6 +244,7 @@ export default function Home() {
           ))}
         </div>
 
+        {/* ZIP Code Checker Box */}
         <div className="mt-12 bg-slate-900 border border-slate-800 rounded-2xl p-6 max-w-xl mx-auto text-center shadow-xl">
           <h3 className="text-lg font-extrabold mb-1">{currentT.zipTitle}</h3>
           <p className="text-xs text-slate-400 mb-4">{currentT.zipSub}</p>
@@ -296,7 +254,7 @@ export default function Home() {
               required
               value={zipCode}
               onChange={(e) => setZipCode(e.target.value)}
-              placeholder="ZIP code"
+              placeholder="Enter ZIP code"
               className="flex-1 bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-amber-500"
             />
             <button
@@ -309,6 +267,7 @@ export default function Home() {
           {zipStatus && <p className="mt-3 text-xs font-bold text-green-400">{zipStatus}</p>}
         </div>
 
+        {/* FAQ Section */}
         <div className="mt-16 max-w-3xl mx-auto">
           <h2 className="text-2xl font-extrabold text-center mb-8">{currentT.faqTitle}</h2>
           <div className="space-y-4">
@@ -322,6 +281,7 @@ export default function Home() {
         </div>
       </section>
 
+      {/* MODAL 1: Contact Options */}
       {modalType === 'contact' && (
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50">
           <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 max-w-sm w-full relative shadow-2xl text-center">
@@ -331,14 +291,14 @@ export default function Home() {
             >
               ✕
             </button>
-            <h3 className="text-lg font-black mb-1">{currentT.contactTitle}</h3>
+            <h3 className="text-lg font-black mb-1">How to Contact Us?</h3>
             <p className="text-amber-500 font-extrabold text-lg mb-6">+1 (917) 349-6532</p>
             <div className="space-y-3">
               <a
                 href="tel:+19173496532"
                 className="block w-full bg-green-600 hover:bg-green-700 text-white font-extrabold py-3 rounded-xl transition text-sm shadow"
               >
-                📞 {currentT.callPhoneBtn}
+                📞 Call Phone
               </a>
               <a
                 href="https://wa.me/19173496532"
@@ -346,13 +306,14 @@ export default function Home() {
                 rel="noopener noreferrer"
                 className="block w-full bg-emerald-500 hover:bg-emerald-600 text-black font-extrabold py-3 rounded-xl transition text-sm shadow"
               >
-                💬 {currentT.whatsappBtn}
+                💬 Open WhatsApp
               </a>
             </div>
           </div>
         </div>
       )}
 
+      {/* MODAL 2: Request Service Form */}
       {modalType === 'request' && (
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50">
           <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 max-w-md w-full relative shadow-2xl max-h-[90vh] overflow-y-auto">
@@ -362,12 +323,12 @@ export default function Home() {
             >
               ✕
             </button>
-            <h3 className="text-xl font-black text-amber-500 mb-1">{currentT.requestTitle}</h3>
-            <p className="text-xs text-slate-400 mb-4">{currentT.serviceLabel} <span className="text-white font-bold">{selectedService}</span></p>
+            <h3 className="text-xl font-black text-amber-500 mb-1">Request Service</h3>
+            <p className="text-xs text-slate-400 mb-4">Service: <span className="text-white font-bold">{selectedService}</span></p>
 
             <form onSubmit={handleSubmitOrder} className="space-y-3">
               <div>
-                <label className="text-xs font-bold uppercase text-slate-400 block mb-1">{currentT.yourName}</label>
+                <label className="text-xs font-bold uppercase text-slate-400 block mb-1">Your Name *</label>
                 <input
                   type="text"
                   required
@@ -378,7 +339,7 @@ export default function Home() {
                 />
               </div>
               <div>
-                <label className="text-xs font-bold uppercase text-slate-400 block mb-1">{currentT.phoneNum}</label>
+                <label className="text-xs font-bold uppercase text-slate-400 block mb-1">Phone Number *</label>
                 <input
                   type="text"
                   required
@@ -389,7 +350,7 @@ export default function Home() {
                 />
               </div>
               <div>
-                <label className="text-xs font-bold uppercase text-slate-400 block mb-1">{currentT.addressLoc}</label>
+                <label className="text-xs font-bold uppercase text-slate-400 block mb-1">Address / Location *</label>
                 <input
                   type="text"
                   required
@@ -400,7 +361,7 @@ export default function Home() {
                 />
               </div>
               <div>
-                <label className="text-xs font-bold uppercase text-slate-400 block mb-1">{currentT.noteLabel}</label>
+                <label className="text-xs font-bold uppercase text-slate-400 block mb-1">Note (Optional)</label>
                 <textarea
                   value={note}
                   onChange={(e) => setNote(e.target.value)}
@@ -415,7 +376,7 @@ export default function Home() {
                 disabled={loading}
                 className="w-full bg-amber-500 hover:bg-amber-600 text-black font-extrabold py-3.5 rounded-xl transition shadow-lg mt-2"
               >
-                {loading ? currentT.sending : currentT.submitBtn}
+                {loading ? 'Sending...' : 'SUBMIT REQUEST'}
               </button>
             </form>
 

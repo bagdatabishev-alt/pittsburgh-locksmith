@@ -20,8 +20,6 @@ const DICT = {
     date: 'Уақыты',
     actions: 'Әрекет',
     delete: 'Жою',
-    approve: 'Мастерге жіберу',
-    approvedStatus: 'Жіберілді',
     loginTitle: 'Админ Панельге Кіру',
     placeholderPass: 'Құпия сөзді енгізіңіз...',
     placeholderEmail: 'Email енгізіңіз...',
@@ -54,8 +52,6 @@ const DICT = {
     date: 'Дата',
     actions: 'Действие',
     delete: 'Удалить',
-    approve: 'Отправить мастеру',
-    approvedStatus: 'Отправлено',
     loginTitle: 'Вход в админ-панель',
     placeholderPass: 'Введите пароль...',
     placeholderEmail: 'Введите Email...',
@@ -88,8 +84,6 @@ const DICT = {
     date: 'Date',
     actions: 'Action',
     delete: 'Delete',
-    approve: 'Send to Tech',
-    approvedStatus: 'Sent',
     loginTitle: 'Admin Panel Login',
     placeholderPass: 'Enter password...',
     placeholderEmail: 'Enter email...',
@@ -148,29 +142,30 @@ export default function AdminPage() {
     if (!isAuthenticated) return;
 
     async function fetchData() {
+      const loadedRequests = JSON.parse(localStorage.getItem('site_requests') || '[]');
       const loadedPrices = JSON.parse(localStorage.getItem('site_prices') || '{}');
       const loadedPhone = localStorage.getItem('site_phone');
       const loadedEmergency = localStorage.getItem('site_emergency');
 
+      if (loadedRequests.length > 0) setRequests(loadedRequests);
       if (Object.keys(loadedPrices).length > 0) setPrices(prev => ({ ...prev, ...loadedPrices }));
       if (loadedPhone) setPhone(loadedPhone);
       if (loadedEmergency !== null) setEmergencyEnabled(loadedEmergency === 'true');
 
       try {
-        // Тікелей requests кестесінен оқу
-        const { data: dbRequests } = await supabase.from('requests').select('*').order('created_at', { ascending: false });
-        if (dbRequests) {
-          const formatted = dbRequests.map(o => ({
+        const { data: dbOrders } = await supabase.from('orders').select('*').order('created_at', { ascending: false });
+        if (dbOrders && dbOrders.length > 0) {
+          const formatted = dbOrders.map(o => ({
             id: o.id,
             name: o.name,
             phone: o.phone,
             service: o.service,
             address: o.address,
             note: o.note,
-            status: o.status || 'new',
             date: o.created_at ? new Date(o.created_at).toLocaleString() : new Date().toLocaleString()
           }));
           setRequests(formatted);
+          localStorage.setItem('site_requests', JSON.stringify(formatted));
         }
 
         const { data: dbTechs } = await supabase.from('techs').select('*').order('created_at', { ascending: false });
@@ -230,26 +225,13 @@ export default function AdminPage() {
     if (confirm('Бұл тапсырысты өшіргіңіз келе ме?')) {
       const updated = requests.filter(r => r.id !== id);
       setRequests(updated);
+      localStorage.setItem('site_requests', JSON.stringify(updated));
 
       try {
-        await supabase.from('requests').delete().eq('id', id);
+        await supabase.from('orders').delete().eq('id', id);
       } catch (err) {
         console.error('Supabase delete error:', err);
       }
-    }
-  };
-
-  // МАСТЕРГЕ ЖІБЕРУ (СТАТУСЫН АУЫСТЫРУ) ФУНКЦИЯСЫ
-  const handleApproveRequest = async (id: number | string) => {
-    const updated = requests.map(r => r.id === id ? { ...r, status: 'approved' } : r);
-    setRequests(updated);
-
-    try {
-      await supabase.from('requests').update({ status: 'approved' }).eq('id', id);
-      alert('✅ Тапсырыс мастерге сәтті жіберілді!');
-    } catch (err) {
-      console.error('Supabase approve error:', err);
-      alert('❌ Қате орын алды.');
     }
   };
 
@@ -347,6 +329,7 @@ export default function AdminPage() {
     <div className="min-h-screen bg-[#12131C] text-white p-4 md:p-8">
       <div className="max-w-6xl mx-auto">
         
+        {/* ЖОҒАРҒЫ МӘЗІР */}
         <div className="flex flex-col lg:flex-row justify-between items-center mb-8 bg-[#181926] p-6 rounded-3xl border border-slate-800 shadow-xl gap-4">
           <h1 className="text-2xl font-extrabold text-amber-500">{t.title}</h1>
           
@@ -375,7 +358,7 @@ export default function AdminPage() {
           </div>
         </div>
 
-        {/* ЗАКАЗДАР БӨЛІМІ (МАСТЕРГЕ ЖІБЕРУ БАТЫРМАСЫМЕН) */}
+        {/* ЗАКАЗДАР БӨЛІМІ */}
         {activeTab === 'requests' && (
           <div className="bg-[#181926] rounded-3xl p-6 border border-slate-800 shadow-xl">
             <h2 className="text-xl font-extrabold mb-6 text-amber-500">{t.requests}</h2>
@@ -406,19 +389,7 @@ export default function AdminPage() {
                         <td className="p-4 text-sm">{req.service || '-'}</td>
                         <td className="p-4 text-slate-300 text-sm">{req.address} {req.note ? `(${req.note})` : ''}</td>
                         <td className="p-4 text-slate-500 text-xs">{req.date}</td>
-                        <td className="p-4 text-center flex items-center justify-center gap-2">
-                          {req.status === 'approved' ? (
-                            <span className="bg-emerald-500/20 text-emerald-400 px-3 py-1.5 rounded-lg text-xs font-bold border border-emerald-500/30">
-                              ✓ {t.approvedStatus}
-                            </span>
-                          ) : (
-                            <button 
-                              onClick={() => handleApproveRequest(req.id)}
-                              className="bg-amber-500 hover:bg-amber-600 text-slate-950 px-3 py-1.5 rounded-lg text-xs font-bold transition shadow"
-                            >
-                              {t.approve}
-                            </button>
-                          )}
+                        <td className="p-4 text-center">
                           <button 
                             onClick={() => handleDeleteRequest(req.id)}
                             className="bg-red-500/20 hover:bg-red-600 text-red-400 hover:text-white px-3 py-1.5 rounded-lg text-xs font-bold transition border border-red-500/30"
@@ -435,7 +406,7 @@ export default function AdminPage() {
           </div>
         )}
 
-        {/* ШЕБЕРЛЕР БӨЛІМІ */}
+        {/* ШЕБЕРЛЕР БӨЛІМІ (СТАТУС АУЫСТЫРУ КӨМЕГІМЕН) */}
         {activeTab === 'techs' && (
           <div className="bg-[#181926] rounded-3xl p-6 border border-slate-800 shadow-xl">
             <h2 className="text-xl font-extrabold mb-6 text-amber-500">{t.techs}</h2>
@@ -493,7 +464,7 @@ export default function AdminPage() {
           </div>
         )}
 
-        {/* БАҒАЛАР БӨЛІМІ */}
+        {/* БАҒАЛАРДЫ АУЫСТЫРУ БӨЛІМІ */}
         {activeTab === 'prices' && (
           <div className="bg-[#181926] rounded-3xl p-6 border border-slate-800 shadow-xl max-w-xl">
             <h2 className="text-xl font-extrabold mb-6 text-amber-500">{t.pricesTitle}</h2>

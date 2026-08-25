@@ -6,13 +6,11 @@ const DICT = {
   kk: {
     title: 'Панель управления сайтом',
     requests: 'Өтініштер',
-    techs: 'Шеберлер',
     prices: 'Бағалар',
     settings: 'Баптаулар',
     back: 'Сайтқа қайту',
     logout: 'Шығу',
     noReq: 'Әзірге өтініштер жоқ.',
-    noTechs: 'Әзірге тіркелген шеберлер жоқ.',
     name: 'Аты',
     phone: 'Телефон',
     service: 'Қызмет',
@@ -20,33 +18,22 @@ const DICT = {
     date: 'Уақыты',
     actions: 'Әрекет',
     delete: 'Жою',
-    approve: 'Мастерге жіберу',
-    approvedStatus: 'Жіберілді',
     loginTitle: 'Админ Панельге Кіру',
-    placeholderPass: 'Құпия сөзді енгізіңіз...',
-    placeholderEmail: 'Email енгізіңіз...',
+    placeholder: 'Құпия сөзді енгізіңіз...',
     loginBtn: 'Кіру',
     pricesTitle: 'Қызмет бағаларын өңдеу',
     saveBtn: 'Сақтау',
     phoneLabel: 'Сайттағы телефон нөмірі:',
-    emergencyLabel: 'Төтенше жағдай блогын көрсету:',
-    techName: 'Шебер Аты',
-    techEmail: 'Email',
-    techZips: 'ZIP Кодтар',
-    techStatus: 'Статус',
-    usePass: 'Мастер-парольмен кіру',
-    useEmail: 'Email/Парольмен кіру (Supabase Auth)'
+    emergencyLabel: 'Төтенше жағдай блогын көрсету:'
   },
   ru: {
     title: 'Панель управления сайтом',
     requests: 'Заявки',
-    techs: 'Мастера',
     prices: 'Цены',
     settings: 'Настройки',
     back: 'На сайт',
     logout: 'Выйти',
     noReq: 'Заявок пока нет.',
-    noTechs: 'Зарегистрированных мастеров пока нет.',
     name: 'Имя',
     phone: 'Телефон',
     service: 'Услуга',
@@ -54,33 +41,22 @@ const DICT = {
     date: 'Дата',
     actions: 'Действие',
     delete: 'Удалить',
-    approve: 'Отправить мастеру',
-    approvedStatus: 'Отправлено',
     loginTitle: 'Вход в админ-панель',
-    placeholderPass: 'Введите пароль...',
-    placeholderEmail: 'Введите Email...',
+    placeholder: 'Введите пароль...',
     loginBtn: 'Войти',
     pricesTitle: 'Редактирование цен на услуги',
     saveBtn: 'Сохранить',
     phoneLabel: 'Телефон на сайте:',
-    emergencyLabel: 'Показывать блок экстренного вызова:',
-    techName: 'Имя Мастера',
-    techEmail: 'Email',
-    techZips: 'ZIP коды',
-    techStatus: 'Статус',
-    usePass: 'Вход по мастер-паролю',
-    useEmail: 'Вход по Email/Паролю (Supabase Auth)'
+    emergencyLabel: 'Показывать блок экстренного вызова:'
   },
   en: {
     title: 'Site Control Panel',
     requests: 'Requests',
-    techs: 'Technicians',
     prices: 'Prices',
     settings: 'Settings',
     back: 'Back to Site',
     logout: 'Logout',
     noReq: 'No requests yet.',
-    noTechs: 'No registered technicians yet.',
     name: 'Name',
     phone: 'Phone',
     service: 'Service',
@@ -88,36 +64,24 @@ const DICT = {
     date: 'Date',
     actions: 'Action',
     delete: 'Delete',
-    approve: 'Send to Tech',
-    approvedStatus: 'Sent',
     loginTitle: 'Admin Panel Login',
-    placeholderPass: 'Enter password...',
-    placeholderEmail: 'Enter email...',
+    placeholder: 'Enter password...',
     loginBtn: 'Login',
     pricesTitle: 'Edit Service Prices',
     saveBtn: 'Save',
     phoneLabel: 'Site Phone Number:',
-    emergencyLabel: 'Show Emergency Block:',
-    techName: 'Tech Name',
-    techEmail: 'Email',
-    techZips: 'ZIP Codes',
-    techStatus: 'Status',
-    usePass: 'Login with Master Password',
-    useEmail: 'Login with Email/Password (Supabase Auth)'
+    emergencyLabel: 'Show Emergency Block:'
   }
 };
 
 export default function AdminPage() {
   const [lang, setLang] = useState<'kk' | 'ru' | 'en'>('kk');
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [loginMode, setLoginMode] = useState<'pass' | 'email'>('pass');
-  
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  
+  const [loginError, setLoginError] = useState('');
   const [requests, setRequests] = useState<any[]>([]);
-  const [techs, setTechs] = useState<any[]>([]);
-  const [activeTab, setActiveTab] = useState<'requests' | 'techs' | 'prices' | 'settings'>('requests');
+  const [activeTab, setActiveTab] = useState<'requests' | 'prices' | 'settings'>('requests');
   const [savedMsg, setSavedMsg] = useState('');
 
   const [prices, setPrices] = useState({
@@ -135,12 +99,13 @@ export default function AdminPage() {
   const t = DICT[lang];
 
   useEffect(() => {
-    async function checkAuth() {
-      const { data } = await supabase.auth.getSession();
-      if (data.session) {
+    // Егер бұрын кірген болса, автоматты түрде ашу
+    const checkAuth = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session || localStorage.getItem('site_admin_auth') === 'true') {
         setIsAuthenticated(true);
       }
-    }
+    };
     checkAuth();
   }, []);
 
@@ -148,34 +113,32 @@ export default function AdminPage() {
     if (!isAuthenticated) return;
 
     async function fetchData() {
+      // 1. Local storage деректерін жүктеу
+      const loadedRequests = JSON.parse(localStorage.getItem('site_requests') || '[]');
       const loadedPrices = JSON.parse(localStorage.getItem('site_prices') || '{}');
       const loadedPhone = localStorage.getItem('site_phone');
       const loadedEmergency = localStorage.getItem('site_emergency');
 
+      if (loadedRequests.length > 0) setRequests(loadedRequests);
       if (Object.keys(loadedPrices).length > 0) setPrices(prev => ({ ...prev, ...loadedPrices }));
       if (loadedPhone) setPhone(loadedPhone);
       if (loadedEmergency !== null) setEmergencyEnabled(loadedEmergency === 'true');
 
+      // 2. Supabase деректерін оқу және синхрондау
       try {
-        // Тікелей requests кестесінен оқу
-        const { data: dbRequests } = await supabase.from('requests').select('*').order('created_at', { ascending: false });
-        if (dbRequests) {
-          const formatted = dbRequests.map(o => ({
+        const { data: dbOrders } = await supabase.from('orders').select('*').order('created_at', { ascending: false });
+        if (dbOrders && dbOrders.length > 0) {
+          const formatted = dbOrders.map(o => ({
             id: o.id,
             name: o.name,
             phone: o.phone,
             service: o.service,
             address: o.address,
             note: o.note,
-            status: o.status || 'new',
             date: o.created_at ? new Date(o.created_at).toLocaleString() : new Date().toLocaleString()
           }));
           setRequests(formatted);
-        }
-
-        const { data: dbTechs } = await supabase.from('techs').select('*').order('created_at', { ascending: false });
-        if (dbTechs) {
-          setTechs(dbTechs);
+          localStorage.setItem('site_requests', JSON.stringify(formatted));
         }
 
         const { data: dbServices } = await supabase.from('services').select('*');
@@ -198,29 +161,41 @@ export default function AdminPage() {
     fetchData();
   }, [isAuthenticated]);
 
-  const handleLogin = async () => {
-    if (loginMode === 'pass') {
-      if (password === 'admin123') {
-        setIsAuthenticated(true);
-      } else {
-        alert('❌ Қате құпия сөз!');
-      }
-    } else {
-      const { error } = await supabase.auth.signInWithPassword({
+  const handleLogin = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    setLoginError('');
+
+    // Бұрынғыдай ЖАЛҒЫЗ парольмен ТЕЗ КІРУ (admin123)
+    if (password === 'admin123' && !email) {
+      localStorage.setItem('site_admin_auth', 'true');
+      setIsAuthenticated(true);
+      return;
+    }
+
+    // Email + пароль арқылы Supabase сәйкестігімен кіру
+    if (email && password) {
+      const { data, error } = await supabase.auth.signInWithPassword({
         email,
-        password
+        password,
       });
 
-      if (error) {
-        alert('❌ Еңгізілген Email немесе Пароль қате: ' + error.message);
-      } else {
+      if (!error && data.session) {
+        localStorage.setItem('site_admin_auth', 'true');
         setIsAuthenticated(true);
+      } else if (password === 'admin123') {
+        localStorage.setItem('site_admin_auth', 'true');
+        setIsAuthenticated(true);
+      } else {
+        setLoginError('❌ Қате email немесе құпия сөз!');
       }
+    } else {
+      setLoginError('❌ Құпия сөзді енгізіңіз!');
     }
   };
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
+    localStorage.removeItem('site_admin_auth');
     setIsAuthenticated(false);
     setPassword('');
     setEmail('');
@@ -230,50 +205,13 @@ export default function AdminPage() {
     if (confirm('Бұл тапсырысты өшіргіңіз келе ме?')) {
       const updated = requests.filter(r => r.id !== id);
       setRequests(updated);
+      localStorage.setItem('site_requests', JSON.stringify(updated));
 
       try {
-        await supabase.from('requests').delete().eq('id', id);
+        await supabase.from('orders').delete().eq('id', id);
       } catch (err) {
         console.error('Supabase delete error:', err);
       }
-    }
-  };
-
-  // МАСТЕРГЕ ЖІБЕРУ (СТАТУСЫН АУЫСТЫРУ) ФУНКЦИЯСЫ
-  const handleApproveRequest = async (id: number | string) => {
-    const updated = requests.map(r => r.id === id ? { ...r, status: 'approved' } : r);
-    setRequests(updated);
-
-    try {
-      await supabase.from('requests').update({ status: 'approved' }).eq('id', id);
-      alert('✅ Тапсырыс мастерге сәтті жіберілді!');
-    } catch (err) {
-      console.error('Supabase approve error:', err);
-      alert('❌ Қате орын алды.');
-    }
-  };
-
-  const handleDeleteTech = async (id: number | string) => {
-    if (confirm('Бұл шеберді өшіргіңіз келе ме?')) {
-      const updated = techs.filter(t => t.id !== id);
-      setTechs(updated);
-
-      try {
-        await supabase.from('techs').delete().eq('id', id);
-      } catch (err) {
-        console.error('Supabase delete tech error:', err);
-      }
-    }
-  };
-
-  const handleStatusChange = async (id: number | string, newStatus: string) => {
-    const updated = techs.map(t => t.id === id ? { ...t, subscription_status: newStatus } : t);
-    setTechs(updated);
-
-    try {
-      await supabase.from('techs').update({ subscription_status: newStatus }).eq('id', id);
-    } catch (err) {
-      console.error('Supabase status update error:', err);
     }
   };
 
@@ -287,7 +225,7 @@ export default function AdminPage() {
       }));
       await supabase.from('services').upsert(updates);
     } catch (err) {
-      console.error('Supabase prices save error:', err);
+        console.error('Supabase prices save error:', err);
     }
 
     setSavedMsg('✅ Бағалар сәтті сақталды!');
@@ -312,32 +250,36 @@ export default function AdminPage() {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen bg-[#12131C] text-white p-4">
         <div className="bg-[#181926] p-8 rounded-3xl shadow-2xl w-96 border border-slate-800">
-          <h1 className="text-2xl font-extrabold mb-4 text-center text-amber-500">{t.loginTitle}</h1>
-          
-          <div className="flex gap-2 mb-6 bg-[#12131C] p-1 rounded-xl border border-slate-800 text-[11px] font-bold">
-            <button onClick={() => setLoginMode('pass')} className={`flex-1 py-2 rounded-lg ${loginMode === 'pass' ? 'bg-amber-500 text-slate-950' : 'text-slate-400'}`}>{t.usePass}</button>
-            <button onClick={() => setLoginMode('email')} className={`flex-1 py-2 rounded-lg ${loginMode === 'email' ? 'bg-amber-500 text-slate-950' : 'text-slate-400'}`}>{t.useEmail}</button>
-          </div>
+          <h1 className="text-2xl font-extrabold mb-6 text-center text-amber-500">{t.loginTitle}</h1>
+          <form onSubmit={handleLogin} className="space-y-4">
+            <div>
+              <input 
+                type="email" 
+                className="w-full p-3.5 bg-[#12131C] border border-slate-700 rounded-xl text-white focus:outline-none focus:border-amber-500 text-sm" 
+                placeholder="Email (міндетті емес)" 
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+              />
+            </div>
+            <div>
+              <input 
+                type="password" 
+                className="w-full p-3.5 bg-[#12131C] border border-slate-700 rounded-xl text-white focus:outline-none focus:border-amber-500 text-sm" 
+                placeholder={t.placeholder} 
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+              />
+            </div>
 
-          {loginMode === 'email' && (
-            <input 
-              type="email" 
-              className="w-full p-3.5 bg-[#12131C] border border-slate-700 rounded-xl mb-3 text-white focus:outline-none focus:border-amber-500" 
-              placeholder={t.placeholderEmail} 
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-            />
-          )}
+            {loginError && (
+              <p className="text-red-400 text-xs font-bold text-center">{loginError}</p>
+            )}
 
-          <input 
-            type="password" 
-            className="w-full p-3.5 bg-[#12131C] border border-slate-700 rounded-xl mb-4 text-white focus:outline-none focus:border-amber-500" 
-            placeholder={t.placeholderPass} 
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-          />
-          
-          <button onClick={handleLogin} className="w-full bg-gradient-to-r from-amber-500 to-orange-500 text-slate-950 font-black py-3.5 rounded-xl transition shadow-lg">{t.loginBtn}</button>
+            <button type="submit" className="w-full bg-gradient-to-r from-amber-500 to-orange-500 text-slate-950 font-black py-3.5 rounded-xl transition shadow-lg">
+              {t.loginBtn}
+            </button>
+          </form>
         </div>
       </div>
     );
@@ -347,6 +289,7 @@ export default function AdminPage() {
     <div className="min-h-screen bg-[#12131C] text-white p-4 md:p-8">
       <div className="max-w-6xl mx-auto">
         
+        {/* ЖОҒАРҒЫ МӘЗІР */}
         <div className="flex flex-col lg:flex-row justify-between items-center mb-8 bg-[#181926] p-6 rounded-3xl border border-slate-800 shadow-xl gap-4">
           <h1 className="text-2xl font-extrabold text-amber-500">{t.title}</h1>
           
@@ -360,9 +303,6 @@ export default function AdminPage() {
             <button onClick={() => setActiveTab('requests')} className={`px-4 py-2 rounded-xl text-sm font-bold transition ${activeTab === 'requests' ? 'bg-amber-500 text-slate-950 shadow-lg' : 'bg-slate-800 text-slate-300'}`}>
               {t.requests} ({requests.length})
             </button>
-            <button onClick={() => setActiveTab('techs')} className={`px-4 py-2 rounded-xl text-sm font-bold transition ${activeTab === 'techs' ? 'bg-amber-500 text-slate-950 shadow-lg' : 'bg-slate-800 text-slate-300'}`}>
-              {t.techs} ({techs.length})
-            </button>
             <button onClick={() => setActiveTab('prices')} className={`px-4 py-2 rounded-xl text-sm font-bold transition ${activeTab === 'prices' ? 'bg-amber-500 text-slate-950 shadow-lg' : 'bg-slate-800 text-slate-300'}`}>
               {t.prices}
             </button>
@@ -375,7 +315,7 @@ export default function AdminPage() {
           </div>
         </div>
 
-        {/* ЗАКАЗДАР БӨЛІМІ (МАСТЕРГЕ ЖІБЕРУ БАТЫРМАСЫМЕН) */}
+        {/* ЗАКАЗДАР БӨЛІМІ */}
         {activeTab === 'requests' && (
           <div className="bg-[#181926] rounded-3xl p-6 border border-slate-800 shadow-xl">
             <h2 className="text-xl font-extrabold mb-6 text-amber-500">{t.requests}</h2>
@@ -406,19 +346,7 @@ export default function AdminPage() {
                         <td className="p-4 text-sm">{req.service || '-'}</td>
                         <td className="p-4 text-slate-300 text-sm">{req.address} {req.note ? `(${req.note})` : ''}</td>
                         <td className="p-4 text-slate-500 text-xs">{req.date}</td>
-                        <td className="p-4 text-center flex items-center justify-center gap-2">
-                          {req.status === 'approved' ? (
-                            <span className="bg-emerald-500/20 text-emerald-400 px-3 py-1.5 rounded-lg text-xs font-bold border border-emerald-500/30">
-                              ✓ {t.approvedStatus}
-                            </span>
-                          ) : (
-                            <button 
-                              onClick={() => handleApproveRequest(req.id)}
-                              className="bg-amber-500 hover:bg-amber-600 text-slate-950 px-3 py-1.5 rounded-lg text-xs font-bold transition shadow"
-                            >
-                              {t.approve}
-                            </button>
-                          )}
+                        <td className="p-4 text-center">
                           <button 
                             onClick={() => handleDeleteRequest(req.id)}
                             className="bg-red-500/20 hover:bg-red-600 text-red-400 hover:text-white px-3 py-1.5 rounded-lg text-xs font-bold transition border border-red-500/30"
@@ -435,65 +363,7 @@ export default function AdminPage() {
           </div>
         )}
 
-        {/* ШЕБЕРЛЕР БӨЛІМІ */}
-        {activeTab === 'techs' && (
-          <div className="bg-[#181926] rounded-3xl p-6 border border-slate-800 shadow-xl">
-            <h2 className="text-xl font-extrabold mb-6 text-amber-500">{t.techs}</h2>
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse">
-                <thead>
-                  <tr className="border-b border-slate-800 text-slate-400 text-xs uppercase tracking-wider">
-                    <th className="p-4">{t.techName}</th>
-                    <th className="p-4">{t.phone}</th>
-                    <th className="p-4">{t.techEmail}</th>
-                    <th className="p-4">{t.techZips}</th>
-                    <th className="p-4">{t.techStatus}</th>
-                    <th className="p-4 text-center">{t.actions}</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-800/60">
-                  {techs.length === 0 ? (
-                    <tr>
-                      <td colSpan={6} className="text-center p-8 text-slate-500 italic">
-                        {t.noTechs}
-                      </td>
-                    </tr>
-                  ) : (
-                    techs.map((tech) => (
-                      <tr key={tech.id} className="hover:bg-slate-800/40 transition">
-                        <td className="p-4 font-bold">{tech.full_name || '-'}</td>
-                        <td className="p-4 text-amber-400 font-bold">{tech.phone || '-'}</td>
-                        <td className="p-4 text-sm text-slate-300">{tech.email || '-'}</td>
-                        <td className="p-4 text-sm font-mono text-slate-300">{tech.zip_codes || '-'}</td>
-                        <td className="p-4">
-                          <select 
-                            value={tech.subscription_status || 'pending'} 
-                            onChange={(e) => handleStatusChange(tech.id, e.target.value)}
-                            className="bg-[#12131C] border border-slate-700 text-amber-400 font-bold px-2.5 py-1 rounded-lg text-xs focus:outline-none focus:border-amber-500 cursor-pointer"
-                          >
-                            <option value="pending">PENDING</option>
-                            <option value="active">ACTIVE</option>
-                            <option value="rejected">REJECTED</option>
-                          </select>
-                        </td>
-                        <td className="p-4 text-center">
-                          <button 
-                            onClick={() => handleDeleteTech(tech.id)}
-                            className="bg-red-500/20 hover:bg-red-600 text-red-400 hover:text-white px-3 py-1.5 rounded-lg text-xs font-bold transition border border-red-500/30"
-                          >
-                            {t.delete}
-                          </button>
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        )}
-
-        {/* БАҒАЛАР БӨЛІМІ */}
+        {/* БАҒАЛАРДЫ АУЫСТЫРУ БӨЛІМІ */}
         {activeTab === 'prices' && (
           <div className="bg-[#181926] rounded-3xl p-6 border border-slate-800 shadow-xl max-w-xl">
             <h2 className="text-xl font-extrabold mb-6 text-amber-500">{t.pricesTitle}</h2>

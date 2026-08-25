@@ -1,255 +1,420 @@
 'use client';
-import { useState, useEffect } from 'react';
 
-const DICT = {
-  en: {
-    heroTitle: 'Locked Out?',
-    heroSub: 'We Can Help.',
-    heroDesc: 'Professional locksmith service for homes, cars, businesses and emergency lockouts.',
-    callNow: 'CALL NOW',
-    requestService: 'REQUEST SERVICE',
-    emergencyTitle: 'Locked Out Right Now?',
-    emergencySub: 'Don’t spend time searching. Call us immediately for rapid dispatch.',
-    servicesTitle: 'What Do You Need Help With?',
-    zipTitle: 'Check Service Availability',
-    zipDesc: 'Enter your ZIP code to check if our nearest technician is available right now.',
-    zipPlaceholder: 'Enter ZIP code or City...',
-    zipCheckBtn: 'CHECK MY AREA',
-    zipSuccess: '✅ We cover your area! Average technician arrival time is 15-20 minutes.',
-    faqTitle: 'Frequently Asked Questions',
-    bottomCall: 'CALL',
-    bottomText: 'WHATSAPP',
-    bottomRequest: 'REQUEST',
-    priceNotice: '⚠️ Note: Final exact price is determined on-site by the technician based on lock complexity.',
-    fromPrice: 'From',
-    contactModalTitle: 'How to Contact Us?',
-    callPhoneBtn: '📞 Call Phone',
-    openWaBtn: '💬 Open WhatsApp',
-    formModalTitle: 'Request Service',
-    serviceLabel: 'Service',
-    nameLabel: 'Your Name *',
-    namePlaceholder: 'John Doe',
-    phoneLabel: 'Phone Number *',
-    phonePlaceholder: '(412) 000-0000',
-    addressLabel: 'Address / Location *',
-    addressPlaceholder: 'Street name or ZIP',
-    noteLabel: 'Note (Optional)',
-    defaultNotePlaceholder: 'Describe your issue...',
-    sendWaBtn: '💬 SEND TO WHATSAPP',
-    generalRequest: 'General Request',
-    mobileRequest: 'Mobile Request',
-    placeholders: {
-      '1': 'Example: Key snapped inside the lock, door is locked...',
-      '2': 'Example: Toyota Camry 2018, all keys lost...',
-      '3': 'Example: Need to replace or repair house lock...',
-      '4': 'Example: Install high-security or code lock for office...',
-      '5': 'Example: Need duplicate or spare key made...',
-      '6': 'Example: Lock mechanism is jammed or damaged...'
-    },
-    services: [
-      { id: '1', title: 'Emergency Lockout', icon: '🚨', desc: 'Fast arrival for home, car or office lockouts.', defaultPrice: '$29' },
-      { id: '2', title: 'Car Locksmith', icon: '🚗', desc: 'Key cutting & transponder programming on site.', defaultPrice: '$49' },
-      { id: '3', title: 'Residential Locksmith', icon: '🏠', desc: 'House lock replacement & repair services.', defaultPrice: '$35' },
-      { id: '4', title: 'Commercial Locksmith', icon: '🏢', desc: 'High-security locks for businesses & offices.', defaultPrice: '$55' },
-      { id: '5', title: 'Key Replacement', icon: '🔑', desc: 'Duplicate or replacement keys made quickly.', defaultPrice: '$25' },
-      { id: '6', title: 'Lock Repair', icon: '🔨', desc: 'Fix damaged or jammed locks easily.', defaultPrice: '$30' },
-    ],
-    faqs: [
-      { q: 'How fast can a locksmith arrive?', a: 'Our average arrival time is 15 to 30 minutes depending on your location and current traffic.' },
-      { q: 'Do you provide 24/7 emergency service?', a: 'Yes! We are available 24 hours a day, 7 days a week for all emergency lockout situations.' },
-      { q: 'Can you unlock high-security car locks?', a: 'Absolutely. Our technicians are equipped with modern tools to handle almost all car models.' }
-    ]
-  },
-  ru: {
-    heroTitle: 'Не можете попасть внутрь?',
-    heroSub: 'Мы поможем.',
-    heroDesc: 'Профессиональные услуги слесаря по замкам для домов, автомобилей, бизнеса и экстренных случаев.',
-    callNow: 'ПОЗВОНИТЬ СЕЙЧАС',
-    requestService: 'ЗАКАЗАТЬ УСЛУГУ',
-    emergencyTitle: 'Вы сейчас не можете попасть внутрь?',
-    emergencySub: 'Не тратьте время на поиски. Позвоните нам для срочного выезда.',
-    servicesTitle: 'Какая помощь вам нужна?',
-    zipTitle: 'Проверить доступность услуги',
-    zipDesc: 'Введите ваш ZIP-код, чтобы проверить, доступен ли наш ближайший мастер прямо сейчас.',
-    zipPlaceholder: 'Введите ZIP-код или город...',
-    zipCheckBtn: 'ПРОВЕРИТЬ РАЙОН',
-    zipSuccess: '✅ Мы обслуживаем ваш район! Среднее время прибытия мастера 15-20 минут.',
-    faqTitle: 'Часто задаваемые вопросы',
-    bottomCall: 'ПОЗВОНИТЬ',
-    bottomText: 'WHATSAPP',
-    bottomRequest: 'ЗАКАЗАТЬ',
-    priceNotice: '⚠️ Примечание: Точная стоимость определяется мастером на месте в зависимости от сложности замка.',
-    fromPrice: 'От',
-    contactModalTitle: 'Как с нами связаться?',
-    callPhoneBtn: '📞 Позвонить по телефону',
-    openWaBtn: '💬 Открыть WhatsApp',
-    formModalTitle: 'Оформить заявку',
-    serviceLabel: 'Услуга',
-    nameLabel: 'Ваше имя *',
-    namePlaceholder: 'Иван Иванов',
-    phoneLabel: 'Номер телефона *',
-    phonePlaceholder: '(412) 000-0000',
-    addressLabel: 'Адрес / Локация *',
-    addressPlaceholder: 'Улица или ZIP-код',
-    noteLabel: 'Примечание (необязательно)',
-    defaultNotePlaceholder: 'Опишите вашу проблему...',
-    sendWaBtn: '💬 ОТПРАВИТЬ В WHATSAPP',
-    generalRequest: 'Общий запрос',
-    mobileRequest: 'Мобильный запрос',
-    placeholders: {
-      '1': 'Пример: Ключ сломался внутри замка, дверь заперта...',
-      '2': 'Пример: Toyota Camry 2018, утеряны все ключи...',
-      '3': 'Пример: Замена или ремонт замка в квартире...',
-      '4': 'Пример: Установка кодового замка в офис...',
-      '5': 'Пример: Нужен дубликат или изготовление нового ключа...',
-      '6': 'Пример: Заклинило механизм или поврежден замок...'
-    },
-    services: [
-      { id: '1', title: 'Экстренное вскрытие', icon: '🚨', desc: 'Быстрый выезд для вскрытия домов, авто и офисов.', defaultPrice: '$29' },
-      { id: '2', title: 'Автослесарь', icon: '🚗', desc: 'Изготовление ключей и прошивка чипов на месте.', defaultPrice: '$49' },
-      { id: '3', title: 'Замки для дома', icon: '🏠', desc: 'Замена и ремонт дверных замков в квартирах и домах.', defaultPrice: '$35' },
-      { id: '4', title: 'Замки для бизнеса', icon: '🏢', desc: 'Установка замков высокой надежности для офисов.', defaultPrice: '$55' },
-      { id: '5', title: 'Замена ключей', icon: '🔑', desc: 'Быстрое изготовление дубликатов и новых ключей.', defaultPrice: '$25' },
-      { id: '6', title: 'Ремонт замков', icon: '🔨', desc: 'Легкое устранение поломок и заклинивших замков.', defaultPrice: '$30' },
-    ],
-    faqs: [
-      { q: 'Как быстро приезжает мастер?', a: 'Среднее время прибытия составляет от 15 до 30 минут в зависимости от вашего местоположения и пробок.' },
-      { q: 'Вы работаете круглосуточно 24/7?', a: 'Да! Мы работаем 24 часа в сутки, 7 дней в неделю без выходных для экстренных вызовов.' },
-      { q: 'Можете ли вы открыть современные автомобили?', a: 'Конечно. Наши мастера оснащены современным оборудованием для работы с любыми марками машин.' }
-    ]
-  },
-  kk: {
-    heroTitle: 'Есікті аша алмай тұрсыз ба?',
-    heroSub: 'Біз көмектесеміз.',
-    heroDesc: 'Үйге, көлікке, бизнеске арналған кәсіби құлып және кілт қызметтері.',
-    callNow: 'ҚАЗІР ҚОҢЫРАУ ШАЛУ',
-    requestService: 'ҚЫЗМЕТКЕ ТАПСЫРЫС БЕРУ',
-    emergencyTitle: 'Дәл қазір есікті аша алмай тұрсыз ба?',
-    emergencySub: 'Уақытыңызды іздеуге жұмсамаңыз. Жедел көмек үшін бізге хабарласыңыз.',
-    servicesTitle: 'Сізге қандай көмек керек?',
-    zipTitle: 'Қызметтің қолжетімділігін тексеру',
-    zipDesc: 'Жақын маңдағы шебердің бос екенін тексеру үшін ZIP-кодты енгізіңіз.',
-    zipPlaceholder: 'ZIP-код немесе қаланы енгізіңіз...',
-    zipCheckBtn: 'АЙМАҚТЫ ТЕКСЕРУ',
-    zipSuccess: '✅ Бұл аймаққа қызмет көрсетеміз! Шебердің орташа келу уақыты 15-20 минут.',
-    faqTitle: 'Жиі қойылатын сұрақтар',
-    bottomCall: 'ҚОҢЫРАУ',
-    bottomText: 'WHATSAPP',
-    bottomRequest: 'ТАПСЫРЫС',
-    priceNotice: '⚠️ Ескерту: Нақты сомасы құлыптың күрделілігіне байланысты шебер келген соң анықталады.',
-    fromPrice: 'Бастапқы бағасы',
-    contactModalTitle: 'Байланысу тәсілін таңдаңыз',
-    callPhoneBtn: '📞 Телефонмен қоңырау шалу',
-    openWaBtn: '💬 WhatsApp-ты ашу',
-    formModalTitle: 'Тапсырыс беру',
-    serviceLabel: 'Қызмет түрі',
-    nameLabel: 'Сіздің атыңыз *',
-    namePlaceholder: 'Асан Әлиев',
-    phoneLabel: 'Телефон нөміріңіз *',
-    phonePlaceholder: '(412) 000-0000',
-    addressLabel: 'Мекенжайыңыз / Аймақ *',
-    addressPlaceholder: 'Көше аты немесе ZIP-код',
-    noteLabel: 'Қосымша ақпарат (міндетті емес)',
-    defaultNotePlaceholder: 'Мәселеңізді сипаттаңыз...',
-    sendWaBtn: '💬 WHATSAPP-ҚА ЖІБЕРУ',
-    generalRequest: 'Жалпы тапсырыс',
-    mobileRequest: 'Мобильді тапсырыс',
-    placeholders: {
-      '1': 'Мысалы: Кілт ішінде сынып қалды, есік құлыптаулы...',
-      '2': 'Мысалы: Toyota Camry 2018, барлық кілті жоғалды...',
-      '3': 'Мысалы: Пәтер есігінің замгын ауыстыру керек...',
-      '4': 'Мысалы: Офис есігіне кодовый замок орнату...',
-      '5': 'Мысалы: Кілттің дубликатын немесе жаңасын жасау...',
-      '6': 'Мысалы: Құлып механизімі кептеліп қалды...'
-    },
-    services: [
-      { id: '1', title: 'Шұғыл есік ашу', icon: '🚨', desc: 'Үй, көлік немесе офис есігін жедел ашу қызметі.', defaultPrice: '$29' },
-      { id: '2', title: 'Көлік кілттері', icon: '🚗', desc: 'Кілт жасау және чиптерді орнында бағдарламалау.', defaultPrice: '$49' },
-      { id: '3', title: 'Үйге арналған құлыптар', icon: '🏠', desc: 'Үй мен пәтер құлыптарын ауыстыру және жөндеу.', defaultPrice: '$35' },
-      { id: '4', title: 'Бизнеске арналған құлыптар', icon: '🏢', desc: 'Офистер мен нысандарға жоғары қорғанысты құлыптар.', defaultPrice: '$55' },
-      { id: '5', title: 'Кілттерді ауыстыру', icon: '🔑', desc: 'Кілттердің көшірмесін немесе жаңасын жылдам жасау.', defaultPrice: '$25' },
-      { id: '6', title: 'Құлыпты жөндеу', icon: '🔨', desc: 'Бұзылған немесе кептеліп қалған құлыптарды жөндеу.', defaultPrice: '$30' },
-    ],
-    faqs: [
-      { q: 'Шебер қаншалықты тез жетеді?', a: 'Сіздің орналасқан жеріңізге байланысты орташа келу уақыты 15-тен 30 минутқа дейін.' },
-      { q: '24/7 шұғыл қызмет көрсетесіздер ме?', a: 'Иә! Біз аптасына 7 күн, 24 сағат бойы демалыссыз жұмыс істейміз.' },
-      { q: 'Заманауи көлік құлыптарын аша аласыздар ма?', a: 'Әрине. Біздің шеберлерде барлық көлік маркаларына арналған арнайы заманауи құралдар бар.' }
-    ]
-  },
-};
+import { useState } from 'react';
 
 export default function Home() {
-  const [lang, setLang] = useState('en');
-  const [phone, setPhone] = useState('+19173496532');
-  const [emergencyEnabled, setEmergencyEnabled] = useState(true);
+  const [lang, setLang] = useState<'KAZ' | 'RUS' | 'ENG'>('ENG');
+  const [modalType, setModalType] = useState<'contact' | 'request' | null>(null);
+  const [selectedService, setSelectedService] = useState('General Request');
   
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isContactModalOpen, setIsContactModalOpen] = useState(false);
-  const [selectedService, setSelectedService] = useState<{ id: string; title: string } | null>(null);
-  
-  const [zipInput, setZipInput] = useState('');
-  const [zipResult, setZipResult] = useState<string | null>(null);
+  // Form states
+  const [name, setName] = useState('');
+  const [phone, setPhone] = useState('');
+  const [address, setAddress] = useState('');
+  const [note, setNote] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [status, setStatus] = useState('');
 
-  const [formData, setFormData] = useState({ name: '', phone: '', address: '', note: '' });
+  // ZIP Code checker states
+  const [zipCode, setZipCode] = useState('');
+  const [zipStatus, setZipStatus] = useState<string | null>(null);
 
-  const t = DICT[lang as keyof typeof DICT] || DICT.en;
-  const cleanPhone = phone.replace(/[^0-9]/g, '');
-
-  const getDynamicPlaceholder = () => {
-    if (selectedService && selectedService.id && t.placeholders[selectedService.id as keyof typeof t.placeholders]) {
-      return t.placeholders[selectedService.id as keyof typeof t.placeholders];
+  const t = {
+    ENG: {
+      title1: "Locked Out?",
+      title2: "We Can Help.",
+      subtitle: "Professional locksmith service for homes, cars, businesses and emergency lockouts.",
+      callNow: "CALL NOW",
+      reqService: "REQUEST SERVICE",
+      bannerTitle: "Locked Out Right Now?",
+      bannerDesc: "Don't spend time searching. Call us immediately for rapid dispatch.",
+      whatNeeded: "What Do You Need Help With?",
+      note: "Note: Final exact price is determined on-site by the technician based on lock complexity.",
+      zipTitle: "Check Service Availability",
+      zipSub: "Enter your ZIP code to check if our nearest technician is available right now.",
+      zipBtn: "CHECK AVAILABILITY",
+      faqTitle: "Frequently Asked Questions",
+      contactTitle: "How to Contact Us?",
+      callPhoneBtn: "Call Phone",
+      whatsappBtn: "Open WhatsApp",
+      requestTitle: "Request Service",
+      serviceLabel: "Service:",
+      yourName: "Your Name *",
+      phoneNum: "Phone Number *",
+      addressLoc: "Address / Location *",
+      noteLabel: "Note (Optional)",
+      submitBtn: "SUBMIT REQUEST",
+      sending: "Sending...",
+      successMsg: "✅ Request sent successfully!",
+      errorMsg: "❌ Failed to send request.",
+      services: [
+        { title: 'Emergency Lockout', desc: 'Fast arrival for home, car or office lockouts.', price: 'From $45' },
+        { title: 'Car Locksmith', desc: 'Key cutting & transponder programming on site.', price: 'From $49' },
+        { title: 'Residential Locksmith', desc: 'House lock replacement & repair services.', price: 'From $35' },
+        { title: 'Commercial Locksmith', desc: 'High-security locks for businesses & offices.', price: 'From $55' },
+        { title: 'Key Replacement', desc: 'Duplicate or replacement keys made quickly.', price: 'From $25' },
+        { title: 'Lock Repair', desc: 'Fix damaged or jammed locks easily.', price: 'From $30' }
+      ],
+      faqs: [
+        { q: "How fast can a locksmith arrive?", a: "Our average arrival time is 15-30 minutes depending on your location and street traffic." },
+        { q: "Do you provide 24/7 emergency service?", a: "Yes! We are available 24 hours a day, 7 days a week for all emergency lockout situations." },
+        { q: "Can you unlock high-security car locks?", a: "Absolutely! Our technicians are equipped with modern tools to handle almost all car models." }
+      ]
+    },
+    RUS: {
+      title1: "Захлопнули дверь?",
+      title2: "Мы поможем.",
+      subtitle: "Профессиональные услуги слесаря для домов, автомобилей, бизнеса и экстренных ситуаций.",
+      callNow: "ПОЗВОНИТЬ",
+      reqService: "ЗАКАЗАТЬ УСЛУГУ",
+      bannerTitle: "Застряли прямо сейчас?",
+      bannerDesc: "Не тратьте время на поиски. Позвоните нам для срочного выезда.",
+      whatNeeded: "Какая помощь вам нужна?",
+      note: "Примечание: Точная цена определяется мастером на месте в зависимости от сложности.",
+      zipTitle: "Проверить доступность сервиса",
+      zipSub: "Введите свой ZIP код, чтобы проверить доступность мастера рядом с вами.",
+      zipBtn: "ПРОВЕРИТЬ",
+      faqTitle: "Часто задаваемые вопросы",
+      contactTitle: "Как с нами связаться?",
+      callPhoneBtn: "Позвонить",
+      whatsappBtn: "Открыть WhatsApp",
+      requestTitle: "Заказать услугу",
+      serviceLabel: "Услуга:",
+      yourName: "Ваше Имя *",
+      phoneNum: "Номер Телефона *",
+      addressLoc: "Адрес / Местоположение *",
+      noteLabel: "Примечание (Необязательно)",
+      submitBtn: "ОТПРАВИТЬ ЗАПРОС",
+      sending: "Отправка...",
+      successMsg: "✅ Запрос успешно отправлен!",
+      errorMsg: "❌ Не удалось отправить запрос.",
+      services: [
+        { title: 'Экстренное вскрытие', desc: 'Быстрый выезд при блокировке дома, авто или офиса.', price: 'От $45' },
+        { title: 'Автослесарь', desc: 'Нарезка ключей и программирование на месте.', price: 'От $49' },
+        { title: 'Замки для дома', desc: 'Замена и ремонт дверных замков в доме.', price: 'От $35' },
+        { title: 'Замки для бизнеса', desc: 'Замки повышенной безопасности для бизнеса.', price: 'От $55' },
+        { title: 'Замена ключей', desc: 'Дубликаты или замена ключей.', price: 'От $25' },
+        { title: 'Ремонт замков', desc: 'Ремонт поврежденных или заклинивших замков.', price: 'От $30' }
+      ],
+      faqs: [
+        { q: "Как быстро приезжает мастер?", a: "Среднее время прибытия составляет 15-30 минут в зависимости от вашего местоположения." },
+        { q: "Работаете ли вы 24/7?", a: "Да! Мы доступны 24 часа в сутки, 7 дней в неделю для любых экстренных вызовов." },
+        { q: "Можете ли вы открыть современные авто?", a: "Конечно! Наши специалисты оснащены современным оборудованием для любых машин." }
+      ]
+    },
+    KAZ: {
+      title1: "Есікті аша алмай тұрсыз ба?",
+      title2: "Біз көмектесеміз.",
+      subtitle: "Үйге, көлікке, бизнеске арналған кәсіби құлып және кілт қызметтері.",
+      callNow: "ҚОҢЫРАУ ШАЛУ",
+      reqService: "ҚЫЗМЕТКЕ ТАПСЫРЫС БЕРУ",
+      bannerTitle: "Дәл қазір есікті аша алмай тұрсыз ба?",
+      bannerDesc: "Уақыт жоғалтпаңыз. Жедел түрде бізге хабарласыңыз.",
+      whatNeeded: "Сізге қандай көмек керек?",
+      note: "Ескерту: Нақты бағаны маман келген соң құлыптың күрделілігіне қарай анықтайды.",
+      zipTitle: "Қызметтің қолжетімділігін тексеру",
+      zipSub: "Жақыныңызда маманның бар-жоғын білу үшін ZIP кодыңызды енгізіңіз.",
+      zipBtn: "ТЕКСЕРУ",
+      faqTitle: "Жиі қойылатын сұрақтар",
+      contactTitle: "Бізбен қалай хабарласуға болады?",
+      callPhoneBtn: "Қоңырау шалу",
+      whatsappBtn: "WhatsApp ашу",
+      requestTitle: "Қызметке тапсырыс беру",
+      serviceLabel: "Қызмет:",
+      yourName: "Аты-жөніңіз *",
+      phoneNum: "Телефон нөмірі *",
+      addressLoc: "Мекенжайыңыз / Локация *",
+      noteLabel: "Қосымша ескерту (Міндетті емес)",
+      submitBtn: "ТАПСЫРЫСТЫ ЖІБЕРУ",
+      sending: "Жіберілуде...",
+      successMsg: "✅ Тапсырыс сәтті жіберілді!",
+      errorMsg: "❌ Тапсырыс жіберілмеді.",
+      services: [
+        { title: 'Шұғыл есік ашу', desc: 'Үй, көлік немесе кеңсе есіктерін ашуға шұғыл келу.', price: 'Бастап $45' },
+        { title: 'Көлік кілттері', desc: 'Көлік кілтін кесу және бағдарламалау.', price: 'Бастап $49' },
+        { title: 'Үйге арналған құлыптар', desc: 'Үй құлыптарын ауыстыру және жөндеу қызметтері.', price: 'Бастап $35' },
+        { title: 'Бизнеске арналған құлыптар', desc: 'Бизнес пен кеңселерге арналған сенімді құлыптар.', price: 'Бастап $55' },
+        { title: 'Кілттерді ауыстыру', desc: 'Кілттердің көшірмесін тез арада жасау.', price: 'Бастап $25' },
+        { title: 'Құлыпты жөндеу', desc: 'Сынған немесе істемейтін құлыптарды жөндеу.', price: 'Бастап $30' }
+      ],
+      faqs: [
+        { q: "Маман қанша уақытта келеді?", a: "Орташа келу уақыты орналасқан жеріңізге байланысты 15-30 минутты құрайды." },
+        { q: "Тәулік бойы (24/7) жұмыс істейсіз бе?", a: "Иә! Біз барлық шұғыл жағдайлар үшін аптасына 7 күн, тәулік бойы жұмыс істейміз." },
+        { q: "Күрделі көлік құлыптарын аша аласыз ба?", a: "Әрине! Біздің мамандар заманауи құралдармен жабдықталған." }
+      ]
     }
-    return t.defaultNotePlaceholder;
   };
 
-  const handleZipCheck = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!zipInput.trim()) return;
-    setZipResult(t.zipSuccess);
+  const currentT = t[lang];
+
+  const handleOpenRequest = (serviceName: string) => {
+    setSelectedService(serviceName);
+    setModalType('request');
   };
 
-  const handleFormSubmit = (e: React.FormEvent) => {
+  const handleCheckZip = (e: React.FormEvent) => {
     e.preventDefault();
-    const serviceTitle = selectedService ? selectedService.title : t.generalRequest;
-    const message = `🚨 *NEW SERVICE REQUEST*%0A%0A🔑 *Service:* ${serviceTitle}%0A👤 *Name:* ${formData.name}%0A📞 *Phone:* ${formData.phone}%0A📍 *Address:* ${formData.address}%0A📝 *Note:* ${formData.note || 'None'}`;
-    window.open(`https://wa.me/${cleanPhone}?text=${message}`, '_blank');
-    setIsModalOpen(false);
-    setFormData({ name: '', phone: '', address: '', note: '' });
+    if (zipCode.length >= 5) {
+      setZipStatus(lang === 'KAZ' ? '✅ Сіздің аймақта қызмет көрсетеміз! Келу уақыты 15-30 минут.' : lang === 'RUS' ? '✅ Мы обслуживаем ваш район! Время прибытия 15-30 минут.' : '✅ We serve your area! Average arrival time is 15-30 minutes.');
+    } else {
+      setZipStatus(lang === 'KAZ' ? '❌ Дұрыс 5 таңбалы ZIP кодты енгізіңіз.' : lang === 'RUS' ? '❌ Введите правильный 5-значный ZIP код.' : '❌ Please enter a valid 5-digit ZIP code.');
+    }
+  };
+
+  const handleSubmitOrder = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setStatus('');
+
+    try {
+      const res = await fetch('/api/telegram', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: 'NEW_ORDER',
+          data: { name, phone, service: selectedService, address, note }
+        })
+      });
+
+      if (res.ok) {
+        setStatus(currentT.successMsg);
+        setName('');
+        setPhone('');
+        setAddress('');
+        setNote('');
+        setTimeout(() => setModalType(null), 2000);
+      } else {
+        setStatus(currentT.errorMsg);
+      }
+    } catch (err) {
+      setStatus(currentT.errorMsg);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
-    <div className="bg-[#12131C] text-white min-h-screen pb-20 md:pb-0 font-sans">
-      <header className="bg-[#181926]/80 backdrop-blur border-b border-slate-800/80 sticky top-0 z-40">
-        <div className="max-w-6xl mx-auto px-6 py-4 flex justify-between items-center">
-          <div className="font-extrabold text-lg md:text-xl tracking-wider text-amber-500">PITTSBURGH LOCKSMITH</div>
-          <div className="flex items-center gap-3">
-            <select value={lang} onChange={(e) => setLang(e.target.value)} className="bg-[#1E202E] text-white p-2 rounded-lg cursor-pointer">
-              <option value="en">EN</option><option value="ru">RU</option><option value="kk">ҚАЗ</option>
-            </select>
-          </div>
+    <main className="min-h-screen bg-slate-950 text-white font-sans selection:bg-amber-500 selection:text-black">
+      <header className="flex justify-between items-center px-6 py-4 max-w-6xl mx-auto">
+        <span className="font-black text-amber-500 tracking-wider">PITTSBURGH LOCKSMITH</span>
+        <div className="flex gap-2">
+          {(['KAZ', 'RUS', 'ENG'] as const).map((l) => (
+            <button
+              key={l}
+              onClick={() => setLang(l)}
+              className={`px-3 py-1 rounded text-xs font-bold transition ${
+                lang === l ? 'bg-amber-500 text-black' : 'bg-slate-800 text-slate-400 hover:text-white'
+              }`}
+            >
+              {l}
+            </button>
+          ))}
         </div>
       </header>
-      
-      <section className="pt-16 pb-12 px-4 text-center max-w-4xl mx-auto space-y-6">
-        <h1 className="text-4xl md:text-6xl font-extrabold">{t.heroTitle}</h1>
-        <p className="text-slate-400">{t.heroDesc}</p>
-        <button onClick={() => setIsContactModalOpen(true)} className="bg-amber-500 text-black font-black py-4 px-8 rounded-2xl">{t.callNow}</button>
+
+      <section className="py-12 px-4 text-center max-w-4xl mx-auto">
+        <h1 className="text-4xl md:text-6xl font-black tracking-tight mb-2">
+          {currentT.title1} <span className="text-amber-500">{currentT.title2}</span>
+        </h1>
+        <p className="text-slate-400 text-sm md:text-base mb-8 max-w-xl mx-auto">
+          {currentT.subtitle}
+        </p>
+
+        <div className="flex flex-wrap justify-center gap-4 mb-10">
+          <button
+            onClick={() => setModalType('contact')}
+            className="bg-amber-500 hover:bg-amber-600 text-black font-extrabold px-8 py-3.5 rounded-xl shadow-lg transition"
+          >
+            {currentT.callNow}
+          </button>
+          <button
+            onClick={() => handleOpenRequest('General Request')}
+            className="bg-slate-800 hover:bg-slate-700 text-white font-bold px-8 py-3.5 rounded-xl border border-slate-700 transition"
+          >
+            {currentT.reqService}
+          </button>
+        </div>
+
+        <div className="bg-red-600/90 border border-red-500 rounded-2xl p-4 md:p-5 flex flex-col md:flex-row items-center justify-between shadow-xl gap-4">
+          <div className="text-left">
+            <h3 className="font-black text-lg">{currentT.bannerTitle}</h3>
+            <p className="text-xs text-red-100">{currentT.bannerDesc}</p>
+          </div>
+          <button
+            onClick={() => setModalType('contact')}
+            className="bg-white hover:bg-slate-100 text-red-600 font-extrabold px-6 py-2.5 rounded-xl text-sm shadow transition shrink-0"
+          >
+            📞 {currentT.callNow}
+          </button>
+        </div>
       </section>
 
-      <section className="max-w-5xl mx-auto py-12 px-4">
+      <section className="max-w-5xl mx-auto px-4 pb-16">
+        <div className="text-center mb-8">
+          <h2 className="text-2xl md:text-3xl font-extrabold mb-2">{currentT.whatNeeded}</h2>
+          <div className="inline-block bg-amber-500/10 border border-amber-500/30 px-4 py-1.5 rounded-full text-amber-400 text-xs font-semibold">
+            ⚠️ {currentT.note}
+          </div>
+        </div>
+
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {t.services.map((srv) => (
-            <div key={srv.id} className="bg-[#1E202E] p-6 rounded-3xl border border-slate-700">
-              <div className="text-4xl mb-3">{srv.icon}</div>
-              <h3 className="text-xl font-bold text-amber-400 mb-2">{srv.title}</h3>
-              <p className="text-slate-400 text-sm mb-4">{srv.desc}</p>
-              <button onClick={() => { setSelectedService({ id: srv.id, title: srv.title }); setIsModalOpen(true); }} className="w-full bg-slate-800 p-3 rounded-xl">{t.requestService}</button>
+          {currentT.services.map((s, idx) => (
+            <div key={idx} className="bg-slate-900 border border-slate-800 rounded-2xl p-5 flex flex-col justify-between hover:border-amber-500/50 transition">
+              <div>
+                <div className="flex justify-between items-start mb-3">
+                  <h3 className="font-bold text-lg">{s.title}</h3>
+                  <span className="bg-amber-500/10 text-amber-400 text-xs font-bold px-2.5 py-1 rounded-lg border border-amber-500/20">
+                    {s.price}
+                  </span>
+                </div>
+                <p className="text-slate-400 text-xs mb-6">{s.desc}</p>
+              </div>
+              <button
+                onClick={() => handleOpenRequest(s.title)}
+                className="w-full bg-slate-800 hover:bg-amber-500 hover:text-black font-bold text-xs py-2.5 rounded-xl border border-slate-700 transition"
+              >
+                {currentT.reqService}
+              </button>
             </div>
           ))}
         </div>
+
+        <div className="mt-12 bg-slate-900 border border-slate-800 rounded-2xl p-6 max-w-xl mx-auto text-center shadow-xl">
+          <h3 className="text-lg font-extrabold mb-1">{currentT.zipTitle}</h3>
+          <p className="text-xs text-slate-400 mb-4">{currentT.zipSub}</p>
+          <form onSubmit={handleCheckZip} className="flex gap-2">
+            <input
+              type="text"
+              required
+              value={zipCode}
+              onChange={(e) => setZipCode(e.target.value)}
+              placeholder="ZIP code"
+              className="flex-1 bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-amber-500"
+            />
+            <button
+              type="submit"
+              className="bg-amber-500 hover:bg-amber-600 text-black font-bold px-6 py-2.5 rounded-xl text-xs transition shrink-0"
+            >
+              {currentT.zipBtn}
+            </button>
+          </form>
+          {zipStatus && <p className="mt-3 text-xs font-bold text-green-400">{zipStatus}</p>}
+        </div>
+
+        <div className="mt-16 max-w-3xl mx-auto">
+          <h2 className="text-2xl font-extrabold text-center mb-8">{currentT.faqTitle}</h2>
+          <div className="space-y-4">
+            {currentT.faqs.map((faq, idx) => (
+              <div key={idx} className="bg-slate-900 border border-slate-800 rounded-xl p-5">
+                <h4 className="font-bold text-sm text-amber-400 mb-1">Q: {faq.q}</h4>
+                <p className="text-xs text-slate-400">A: {faq.a}</p>
+              </div>
+            ))}
+          </div>
+        </div>
       </section>
-      
-      {/* Footer & Modals omit for brevity, code is now clean */}
-    </div>
+
+      {modalType === 'contact' && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 max-w-sm w-full relative shadow-2xl text-center">
+            <button
+              onClick={() => setModalType(null)}
+              className="absolute top-4 right-4 text-slate-400 hover:text-white font-bold"
+            >
+              ✕
+            </button>
+            <h3 className="text-lg font-black mb-1">{currentT.contactTitle}</h3>
+            <p className="text-amber-500 font-extrabold text-lg mb-6">+1 (917) 349-6532</p>
+            <div className="space-y-3">
+              <a
+                href="tel:+19173496532"
+                className="block w-full bg-green-600 hover:bg-green-700 text-white font-extrabold py-3 rounded-xl transition text-sm shadow"
+              >
+                📞 {currentT.callPhoneBtn}
+              </a>
+              <a
+                href="https://wa.me/19173496532"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="block w-full bg-emerald-500 hover:bg-emerald-600 text-black font-extrabold py-3 rounded-xl transition text-sm shadow"
+              >
+                💬 {currentT.whatsappBtn}
+              </a>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {modalType === 'request' && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 max-w-md w-full relative shadow-2xl max-h-[90vh] overflow-y-auto">
+            <button
+              onClick={() => setModalType(null)}
+              className="absolute top-4 right-4 text-slate-400 hover:text-white font-bold"
+            >
+              ✕
+            </button>
+            <h3 className="text-xl font-black text-amber-500 mb-1">{currentT.requestTitle}</h3>
+            <p className="text-xs text-slate-400 mb-4">{currentT.serviceLabel} <span className="text-white font-bold">{selectedService}</span></p>
+
+            <form onSubmit={handleSubmitOrder} className="space-y-3">
+              <div>
+                <label className="text-xs font-bold uppercase text-slate-400 block mb-1">{currentT.yourName}</label>
+                <input
+                  type="text"
+                  required
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="John Doe"
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-sm outline-none focus:border-amber-500"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-bold uppercase text-slate-400 block mb-1">{currentT.phoneNum}</label>
+                <input
+                  type="text"
+                  required
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  placeholder="+1 (555) 000-0000"
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-sm outline-none focus:border-amber-500"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-bold uppercase text-slate-400 block mb-1">{currentT.addressLoc}</label>
+                <input
+                  type="text"
+                  required
+                  value={address}
+                  onChange={(e) => setAddress(e.target.value)}
+                  placeholder="Street name or ZIP"
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-sm outline-none focus:border-amber-500"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-bold uppercase text-slate-400 block mb-1">{currentT.noteLabel}</label>
+                <textarea
+                  value={note}
+                  onChange={(e) => setNote(e.target.value)}
+                  placeholder="Locked out of car, jammed lock, etc..."
+                  rows={2}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-sm outline-none focus:border-amber-500 resize-none"
+                />
+              </div>
+
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full bg-amber-500 hover:bg-amber-600 text-black font-extrabold py-3.5 rounded-xl transition shadow-lg mt-2"
+              >
+                {loading ? currentT.sending : currentT.submitBtn}
+              </button>
+            </form>
+
+            {status && <p className="mt-3 text-center text-xs font-bold">{status}</p>}
+          </div>
+        </div>
+      )}
+    </main>
   );
 }

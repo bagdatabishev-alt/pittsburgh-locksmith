@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { createClient } from '@supabase/supabase-js';
 
 export default function Home() {
   const [lang, setLang] = useState<'KAZ' | 'RUS' | 'ENG'>('ENG');
@@ -89,12 +90,12 @@ export default function Home() {
       successMsg: "✅ Запрос успешно отправлен!",
       errorMsg: "❌ Не удалось отправить запрос.",
       services: [
-        { title: 'Emergency Lockout', desc: 'Быстрый выезд при блокировке дома, авто или офиса.', price: 'От $45' },
-        { title: 'Car Locksmith', desc: 'Нарезка ключей и программирование на месте.', price: 'От $49' },
-        { title: 'Residential Locksmith', desc: 'Замена и ремонт дверных замков в доме.', price: 'От $35' },
-        { title: 'Commercial Locksmith', desc: 'Замки повышенной безопасности для бизнеса.', price: 'От $55' },
-        { title: 'Key Replacement', desc: 'Дубликаты или замена ключей.', price: 'От $25' },
-        { title: 'Lock Repair', desc: 'Ремонт поврежденных или заклинивших замков.', price: 'От $30' }
+        { title: 'Экстренное вскрытие', desc: 'Быстрый выезд при блокировке дома, авто или офиса.', price: 'От $45' },
+        { title: 'Автослесарь', desc: 'Нарезка ключей и программирование на месте.', price: 'От $49' },
+        { title: 'Замки для дома', desc: 'Замена и ремонт дверных замков в доме.', price: 'От $35' },
+        { title: 'Замки для бизнеса', desc: 'Замки повышенной безопасности для бизнеса.', price: 'От $55' },
+        { title: 'Замена ключей', desc: 'Дубликаты или замена ключей.', price: 'От $25' },
+        { title: 'Ремонт замков', desc: 'Ремонт поврежденных или заклинивших замков.', price: 'От $30' }
       ],
       faqs: [
         { q: "Как быстро приезжает мастер?", a: "Среднее время прибытия составляет 15-30 минут в зависимости от вашего местоположения." },
@@ -130,12 +131,12 @@ export default function Home() {
       successMsg: "✅ Тапсырыс сәтті жіберілді!",
       errorMsg: "❌ Тапсырыс жіберілмеді.",
       services: [
-        { title: 'Emergency Lockout', desc: 'Үй, көлік немесе кеңсе есіктерін ашуға шұғыл келу.', price: 'Бастап $45' },
-        { title: 'Car Locksmith', desc: 'Көлік кілтін кесу және бағдарламалау.', price: 'Бастап $49' },
-        { title: 'Residential Locksmith', desc: 'Үй құлыптарын ауыстыру және жөндеу қызметтері.', price: 'Бастап $35' },
-        { title: 'Commercial Locksmith', desc: 'Бизнес пен кеңселерге арналған сенімді құлыптар.', price: 'Бастап $55' },
-        { title: 'Key Replacement', desc: 'Кілттердің көшірмесін тез арада жасау.', price: 'Бастап $25' },
-        { title: 'Lock Repair', desc: 'Сынған немесе істемейтін құлыптарды жөндеу.', price: 'Бастап $30' }
+        { title: 'Шұғыл есік ашу', desc: 'Үй, көлік немесе кеңсе есіктерін ашуға шұғыл келу.', price: 'Бастап $45' },
+        { title: 'Көлік кілттері', desc: 'Көлік кілтін кесу және бағдарламалау.', price: 'Бастап $49' },
+        { title: 'Үйге арналған құлыптар', desc: 'Үй құлыптарын ауыстыру және жөндеу қызметтері.', price: 'Бастап $35' },
+        { title: 'Бизнеске арналған құлыптар', desc: 'Бизнес пен кеңселерге арналған сенімді құлыптар.', price: 'Бастап $55' },
+        { title: 'Кілттерді ауыстыру', desc: 'Кілттердің көшірмесін тез арада жасау.', price: 'Бастап $25' },
+        { title: 'Құлыпты жөндеу', desc: 'Сынған немесе істемейтін құлыптарды жөндеу.', price: 'Бастап $30' }
       ],
       faqs: [
         { q: "Маман қанша уақытта келеді?", a: "Орташа келу уақыты орналасқан жеріңізге байланысты 15-30 минутты құрайды." },
@@ -167,26 +168,33 @@ export default function Home() {
     setStatus('');
 
     try {
-      const res = await fetch('/api/telegram', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          type: 'NEW_ORDER',
-          data: { name, phone, service: selectedService, address, note }
-        })
-      });
+      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+      const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
+      
+      const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
-      if (res.ok) {
-        setStatus(currentT.successMsg);
-        setName('');
-        setPhone('');
-        setAddress('');
-        setNote('');
-        setTimeout(() => setModalType(null), 2000);
-      } else {
-        setStatus(currentT.errorMsg);
+      const { error } = await supabase.from('requests').insert([
+        {
+          name: name,
+          phone: phone,
+          service: selectedService,
+          address: address,
+          note: note,
+        }
+      ]);
+
+      if (error) {
+        throw error;
       }
+
+      setStatus(currentT.successMsg);
+      setName('');
+      setPhone('');
+      setAddress('');
+      setNote('');
+      setTimeout(() => setModalType(null), 2000);
     } catch (err) {
+      console.error(err);
       setStatus(currentT.errorMsg);
     } finally {
       setLoading(false);

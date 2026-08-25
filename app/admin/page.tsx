@@ -148,19 +148,10 @@ export default function AdminPage() {
     if (!isAuthenticated) return;
 
     async function fetchData() {
-      const loadedRequests = JSON.parse(localStorage.getItem('site_requests') || '[]');
-      const loadedPrices = JSON.parse(localStorage.getItem('site_prices') || '{}');
-      const loadedPhone = localStorage.getItem('site_phone');
-      const loadedEmergency = localStorage.getItem('site_emergency');
-
-      if (loadedRequests.length > 0) setRequests(loadedRequests);
-      if (Object.keys(loadedPrices).length > 0) setPrices(prev => ({ ...prev, ...loadedPrices }));
-      if (loadedPhone) setPhone(loadedPhone);
-      if (loadedEmergency !== null) setEmergencyEnabled(loadedEmergency === 'true');
-
       try {
+        // Тікелей Supabase базасынан заказдарды оқимыз
         const { data: dbOrders } = await supabase.from('requests').select('*').order('created_at', { ascending: false });
-        if (dbOrders && dbOrders.length > 0) {
+        if (dbOrders) {
           const formatted = dbOrders.map(o => ({
             id: o.id,
             name: o.name,
@@ -172,7 +163,6 @@ export default function AdminPage() {
             date: o.created_at ? new Date(o.created_at).toLocaleString() : new Date().toLocaleString()
           }));
           setRequests(formatted);
-          localStorage.setItem('site_requests', JSON.stringify(formatted));
         }
 
         const { data: dbTechs } = await supabase.from('techs').select('*').order('created_at', { ascending: false });
@@ -232,7 +222,6 @@ export default function AdminPage() {
     if (confirm('Бұл тапсырысты өшіргіңіз келе ме?')) {
       const updated = requests.filter(r => r.id !== id);
       setRequests(updated);
-      localStorage.setItem('site_requests', JSON.stringify(updated));
 
       try {
         await supabase.from('requests').delete().eq('id', id);
@@ -250,9 +239,9 @@ export default function AdminPage() {
 
     const updated = requests.map(r => r.id === orderId ? { ...r, tech_id: techId } : r);
     setRequests(updated);
-    localStorage.setItem('site_requests', JSON.stringify(updated));
 
     try {
+      // Тікелей Supabase-ке tech_id жаңартамыз (мастер көре алуы үшін)
       const { error } = await supabase.from('requests').update({ tech_id: techId }).eq('id', orderId);
       if (error) {
         console.error('Supabase update order error:', error);
@@ -290,8 +279,6 @@ export default function AdminPage() {
   };
 
   const handleSavePrices = async () => {
-    localStorage.setItem('site_prices', JSON.stringify(prices));
-
     try {
       const updates = Object.entries(prices).map(([id, price]) => ({
         id: Number(id),
@@ -307,9 +294,6 @@ export default function AdminPage() {
   };
 
   const handleSaveSettings = async () => {
-    localStorage.setItem('site_phone', phone);
-    localStorage.setItem('site_emergency', String(emergencyEnabled));
-
     try {
       await supabase.from('settings').upsert([{ id: 1, phone, emergency_enabled: emergencyEnabled }]);
     } catch (err) {
@@ -359,7 +343,6 @@ export default function AdminPage() {
     <div className="min-h-screen bg-[#12131C] text-white p-4 md:p-8">
       <div className="max-w-6xl mx-auto">
         
-        {/* ЖОҒАРҒЫ МӘЗІР */}
         <div className="flex flex-col lg:flex-row justify-between items-center mb-8 bg-[#181926] p-6 rounded-3xl border border-slate-800 shadow-xl gap-4">
           <h1 className="text-2xl font-extrabold text-amber-500">{t.title}</h1>
           
@@ -388,7 +371,6 @@ export default function AdminPage() {
           </div>
         </div>
 
-        {/* ЗАКАЗДАР БӨЛІМІ */}
         {activeTab === 'requests' && (
           <div className="bg-[#181926] rounded-3xl p-6 border border-slate-800 shadow-xl">
             <h2 className="text-xl font-extrabold mb-6 text-amber-500">{t.requests}</h2>
@@ -461,7 +443,6 @@ export default function AdminPage() {
           </div>
         )}
 
-        {/* ШЕБЕРЛЕР БӨЛІМІ */}
         {activeTab === 'techs' && (
           <div className="bg-[#181926] rounded-3xl p-6 border border-slate-800 shadow-xl">
             <h2 className="text-xl font-extrabold mb-6 text-amber-500">{t.techs}</h2>
@@ -519,7 +500,6 @@ export default function AdminPage() {
           </div>
         )}
 
-        {/* БАҒАЛАРДЫ АУЫСТЫРУ БӨЛІМІ */}
         {activeTab === 'prices' && (
           <div className="bg-[#181926] rounded-3xl p-6 border border-slate-800 shadow-xl max-w-xl">
             <h2 className="text-xl font-extrabold mb-6 text-amber-500">{t.pricesTitle}</h2>
@@ -554,7 +534,6 @@ export default function AdminPage() {
           </div>
         )}
 
-        {/* БАПТАУЛАР БӨЛІМІ */}
         {activeTab === 'settings' && (
           <div className="bg-[#181926] rounded-3xl p-6 border border-slate-800 shadow-xl max-w-xl">
             <h2 className="text-xl font-extrabold mb-6 text-amber-500">{t.settings}</h2>

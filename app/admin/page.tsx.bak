@@ -144,21 +144,23 @@ export default function AdminPage() {
     checkAuth();
   }, []);
 
-  // ТІКЕЛЕЙ SUPABASE-ТЕН ДЕРЕКТЕРДІ ТАРТУ (LOCALSTORAGE АЛМАСТЫРЫЛДЫ)
   useEffect(() => {
     if (!isAuthenticated) return;
 
     async function fetchData() {
-      try {
-        // 1. Requests (Заявкалар) тікелей Supabase-тен алынады
-        const { data: dbOrders, error: orderErr } = await supabase
-          .from('requests')
-          .select('*')
-          .order('created_at', { ascending: false });
+      const loadedRequests = JSON.parse(localStorage.getItem('site_requests') || '[]');
+      const loadedPrices = JSON.parse(localStorage.getItem('site_prices') || '{}');
+      const loadedPhone = localStorage.getItem('site_phone');
+      const loadedEmergency = localStorage.getItem('site_emergency');
 
-        if (orderErr) {
-          console.error('Fetch orders error:', orderErr);
-        } else if (dbOrders) {
+      if (loadedRequests.length > 0) setRequests(loadedRequests);
+      if (Object.keys(loadedPrices).length > 0) setPrices(prev => ({ ...prev, ...loadedPrices }));
+      if (loadedPhone) setPhone(loadedPhone);
+      if (loadedEmergency !== null) setEmergencyEnabled(loadedEmergency === 'true');
+
+      try {
+        const { data: dbOrders } = await supabase.from('requests').select('*').order('created_at', { ascending: false });
+        if (dbOrders && dbOrders.length > 0) {
           const formatted = dbOrders.map(o => ({
             id: o.id,
             name: o.name,
@@ -170,15 +172,14 @@ export default function AdminPage() {
             date: o.created_at ? new Date(o.created_at).toLocaleString() : new Date().toLocaleString()
           }));
           setRequests(formatted);
+          localStorage.setItem('site_requests', JSON.stringify(formatted));
         }
 
-        // 2. Techs (Мастерлер)
         const { data: dbTechs } = await supabase.from('techs').select('*').order('created_at', { ascending: false });
         if (dbTechs) {
           setTechs(dbTechs);
         }
 
-        // 3. Services / Prices
         const { data: dbServices } = await supabase.from('services').select('*');
         if (dbServices && dbServices.length > 0) {
           const newPrices: Record<string, string> = { ...prices };
@@ -186,7 +187,6 @@ export default function AdminPage() {
           setPrices(newPrices as any);
         }
 
-        // 4. Settings
         const { data: dbSettings } = await supabase.from('settings').select('*').maybeSingle();
         if (dbSettings) {
           if (dbSettings.phone) setPhone(dbSettings.phone);
@@ -232,6 +232,7 @@ export default function AdminPage() {
     if (confirm('Бұл тапсырысты өшіргіңіз келе ме?')) {
       const updated = requests.filter(r => r.id !== id);
       setRequests(updated);
+      localStorage.setItem('site_requests', JSON.stringify(updated));
 
       try {
         await supabase.from('requests').delete().eq('id', id);
@@ -241,7 +242,6 @@ export default function AdminPage() {
     }
   };
 
-  // ТАПСЫРЫСТЫ ШЕБЕРГЕ БӨЛІП БЕРУ (SUPABASE-КЕ ЖАЗУ)
   const handleAssignOrder = async (orderId: number | string, techId: string) => {
     if (!techId) {
       alert('⚠️ Алдымен шеберді таңдаңыз!');
@@ -250,13 +250,10 @@ export default function AdminPage() {
 
     const updated = requests.map(r => r.id === orderId ? { ...r, tech_id: techId } : r);
     setRequests(updated);
+    localStorage.setItem('site_requests', JSON.stringify(updated));
 
     try {
-      const { error } = await supabase
-        .from('requests')
-        .update({ tech_id: Number(techId) })
-        .eq('id', orderId);
-
+      const { error } = await supabase.from('requests').update({ tech_id: techId }).eq('id', orderId);
       if (error) {
         console.error('Supabase update order error:', error);
         alert('❌ Қате кетті: ' + error.message);
@@ -293,28 +290,33 @@ export default function AdminPage() {
   };
 
   const handleSavePrices = async () => {
+    localStorage.setItem('site_prices', JSON.stringify(prices));
+
     try {
       const updates = Object.entries(prices).map(([id, price]) => ({
         id: Number(id),
         price: Number(price)
       }));
       await supabase.from('services').upsert(updates);
-      setSavedMsg('✅ Бағалар сәтті сақталды!');
     } catch (err) {
       console.error('Supabase prices save error:', err);
-      setSavedMsg('❌ Қате кетті!');
     }
+
+    setSavedMsg('✅ Бағалар сәтті сақталды!');
     setTimeout(() => setSavedMsg(''), 3000);
   };
 
   const handleSaveSettings = async () => {
+    localStorage.setItem('site_phone', phone);
+    localStorage.setItem('site_emergency', String(emergencyEnabled));
+
     try {
       await supabase.from('settings').upsert([{ id: 1, phone, emergency_enabled: emergencyEnabled }]);
-      setSavedMsg('✅ Баптаулар сәтті сақталды!');
     } catch (err) {
       console.error('Supabase settings save error:', err);
-      setSavedMsg('❌ Қате кетті!');
     }
+
+    setSavedMsg('✅ Баптаулар сәтті сақталды!');
     setTimeout(() => setSavedMsg(''), 3000);
   };
 
@@ -437,14 +439,14 @@ export default function AdminPage() {
 
                             <button 
                               onClick={() => handleAssignOrder(req.id, req.tech_id)}
-                              className="bg-amber-500 hover:bg-amber-400 text-slate-950 px-3 py-1.5 rounded-lg text-xs font-black transition shadow cursor-pointer"
+                              className="bg-amber-500 hover:bg-amber-400 text-slate-950 px-3 py-1.5 rounded-lg text-xs font-black transition shadow"
                             >
                               {t.assign}
                             </button>
 
                             <button 
                               onClick={() => handleDeleteRequest(req.id)}
-                              className="bg-red-500/20 hover:bg-red-600 text-red-400 hover:text-white px-3 py-1.5 rounded-lg text-xs font-bold transition border border-red-500/30 cursor-pointer"
+                              className="bg-red-500/20 hover:bg-red-600 text-red-400 hover:text-white px-3 py-1.5 rounded-lg text-xs font-bold transition border border-red-500/30"
                             >
                               {t.delete}
                             </button>
@@ -503,7 +505,7 @@ export default function AdminPage() {
                         <td className="p-4 text-center">
                           <button 
                             onClick={() => handleDeleteTech(tech.id)}
-                            className="bg-red-500/20 hover:bg-red-600 text-red-400 hover:text-white px-3 py-1.5 rounded-lg text-xs font-bold transition border border-red-500/30 cursor-pointer"
+                            className="bg-red-500/20 hover:bg-red-600 text-red-400 hover:text-white px-3 py-1.5 rounded-lg text-xs font-bold transition border border-red-500/30"
                           >
                             {t.delete}
                           </button>
@@ -546,7 +548,7 @@ export default function AdminPage() {
                 <label className="block text-slate-400 text-xs font-bold mb-1">6. Lock Repair ($):</label>
                 <input type="text" value={prices['6']} onChange={(e) => setPrices({...prices, '6': e.target.value})} className="w-full p-3 bg-[#12131C] border border-slate-700 rounded-xl text-white font-bold" />
               </div>
-              <button onClick={handleSavePrices} className="w-full bg-gradient-to-r from-amber-500 to-orange-500 text-slate-950 font-black py-3.5 rounded-xl transition shadow-lg mt-2 cursor-pointer">{t.saveBtn}</button>
+              <button onClick={handleSavePrices} className="w-full bg-gradient-to-r from-amber-500 to-orange-500 text-slate-950 font-black py-3.5 rounded-xl transition shadow-lg mt-2">{t.saveBtn}</button>
               {savedMsg && <p className="text-emerald-400 font-bold text-center mt-2">{savedMsg}</p>}
             </div>
           </div>
@@ -565,7 +567,7 @@ export default function AdminPage() {
                 <input type="checkbox" id="emerg" checked={emergencyEnabled} onChange={(e) => setEmergencyEnabled(e.target.checked)} className="w-5 h-5 accent-amber-500 cursor-pointer" />
                 <label htmlFor="emerg" className="text-sm font-bold text-slate-300 cursor-pointer">{t.emergencyLabel}</label>
               </div>
-              <button onClick={handleSaveSettings} className="w-full bg-gradient-to-r from-amber-500 to-orange-500 text-slate-950 font-black py-3.5 rounded-xl transition shadow-lg mt-4 cursor-pointer">{t.saveBtn}</button>
+              <button onClick={handleSaveSettings} className="w-full bg-gradient-to-r from-amber-500 to-orange-500 text-slate-950 font-black py-3.5 rounded-xl transition shadow-lg mt-4">{t.saveBtn}</button>
               {savedMsg && <p className="text-emerald-400 font-bold text-center mt-2">{savedMsg}</p>}
             </div>
           </div>

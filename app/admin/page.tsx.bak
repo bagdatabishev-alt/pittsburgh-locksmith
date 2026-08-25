@@ -33,7 +33,9 @@ const DICT = {
     techZips: 'ZIP Кодтар',
     techStatus: 'Статус',
     usePass: 'Мастер-парольмен кіру',
-    useEmail: 'Email/Парольмен кіру (Supabase Auth)'
+    useEmail: 'Email/Парольмен кіру (Supabase Auth)',
+    assign: 'Жіберу',
+    selectTech: 'Шеберді таңдаңыз'
   },
   ru: {
     title: 'Панель управления сайтом',
@@ -65,7 +67,9 @@ const DICT = {
     techZips: 'ZIP коды',
     techStatus: 'Статус',
     usePass: 'Вход по мастер-паролю',
-    useEmail: 'Вход по Email/Паролю (Supabase Auth)'
+    useEmail: 'Вход по Email/Паролю (Supabase Auth)',
+    assign: 'Назначить',
+    selectTech: 'Выберите мастера'
   },
   en: {
     title: 'Site Control Panel',
@@ -97,7 +101,9 @@ const DICT = {
     techZips: 'ZIP Codes',
     techStatus: 'Status',
     usePass: 'Login with Master Password',
-    useEmail: 'Login with Email/Password (Supabase Auth)'
+    useEmail: 'Login with Email/Password (Supabase Auth)',
+    assign: 'Assign',
+    selectTech: 'Select Tech'
   }
 };
 
@@ -162,6 +168,7 @@ export default function AdminPage() {
             service: o.service,
             address: o.address,
             note: o.note,
+            tech_id: o.tech_id || '',
             date: o.created_at ? new Date(o.created_at).toLocaleString() : new Date().toLocaleString()
           }));
           setRequests(formatted);
@@ -232,6 +239,29 @@ export default function AdminPage() {
       } catch (err) {
         console.error('Supabase delete error:', err);
       }
+    }
+  };
+
+  const handleAssignOrder = async (orderId: number | string, techId: string) => {
+    if (!techId) {
+      alert('⚠️ Алдымен шеберді таңдаңыз!');
+      return;
+    }
+
+    const updated = requests.map(r => r.id === orderId ? { ...r, tech_id: techId } : r);
+    setRequests(updated);
+    localStorage.setItem('site_requests', JSON.stringify(updated));
+
+    try {
+      const { error } = await supabase.from('orders').update({ tech_id: techId }).eq('id', orderId);
+      if (error) {
+        console.error('Supabase update order error:', error);
+        alert('❌ Қате кетті: ' + error.message);
+      } else {
+        alert('✅ Тапсырыс шеберге сәтті жіберілді!');
+      }
+    } catch (err) {
+      console.error('Supabase assign order error:', err);
     }
   };
 
@@ -358,7 +388,7 @@ export default function AdminPage() {
           </div>
         </div>
 
-        {/* ЗАКАЗДАР БӨЛІМІ */}
+        {/* ЗАКАЗДАР БӨЛІМІ (МАСТЕРГЕ ЖІБЕРУ МҮМКІНДІГІМЕН) */}
         {activeTab === 'requests' && (
           <div className="bg-[#181926] rounded-3xl p-6 border border-slate-800 shadow-xl">
             <h2 className="text-xl font-extrabold mb-6 text-amber-500">{t.requests}</h2>
@@ -390,12 +420,37 @@ export default function AdminPage() {
                         <td className="p-4 text-slate-300 text-sm">{req.address} {req.note ? `(${req.note})` : ''}</td>
                         <td className="p-4 text-slate-500 text-xs">{req.date}</td>
                         <td className="p-4 text-center">
-                          <button 
-                            onClick={() => handleDeleteRequest(req.id)}
-                            className="bg-red-500/20 hover:bg-red-600 text-red-400 hover:text-white px-3 py-1.5 rounded-lg text-xs font-bold transition border border-red-500/30"
-                          >
-                            {t.delete}
-                          </button>
+                          <div className="flex items-center justify-center gap-2 flex-wrap">
+                            <select 
+                              value={req.tech_id || ''} 
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                setRequests(requests.map(r => r.id === req.id ? { ...r, tech_id: val } : r));
+                              }}
+                              className="bg-[#12131C] border border-slate-700 text-amber-400 font-bold px-2.5 py-1.5 rounded-lg text-xs focus:outline-none focus:border-amber-500 cursor-pointer"
+                            >
+                              <option value="">-- {t.selectTech} --</option>
+                              {techs.map(tech => (
+                                <option key={tech.id} value={tech.id}>
+                                  {tech.full_name || tech.email || 'Мастер #' + tech.id}
+                                </option>
+                              ))}
+                            </select>
+
+                            <button 
+                              onClick={() => handleAssignOrder(req.id, req.tech_id)}
+                              className="bg-amber-500 hover:bg-amber-400 text-slate-950 px-3 py-1.5 rounded-lg text-xs font-black transition shadow"
+                            >
+                              {t.assign}
+                            </button>
+
+                            <button 
+                              onClick={() => handleDeleteRequest(req.id)}
+                              className="bg-red-500/20 hover:bg-red-600 text-red-400 hover:text-white px-3 py-1.5 rounded-lg text-xs font-bold transition border border-red-500/30"
+                            >
+                              {t.delete}
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     ))
@@ -406,7 +461,7 @@ export default function AdminPage() {
           </div>
         )}
 
-        {/* ШЕБЕРЛЕР БӨЛІМІ (СТАТУС АУЫСТЫРУ КӨМЕГІМЕН) */}
+        {/* ШЕБЕРЛЕР БӨЛІМІ */}
         {activeTab === 'techs' && (
           <div className="bg-[#181926] rounded-3xl p-6 border border-slate-800 shadow-xl">
             <h2 className="text-xl font-extrabold mb-6 text-amber-500">{t.techs}</h2>

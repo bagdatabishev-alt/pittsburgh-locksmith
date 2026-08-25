@@ -125,7 +125,7 @@ export default function MasterDashboard() {
 
       setMasterData(data);
       setIsAuthenticated(true);
-      fetchFilteredOrders();
+      fetchFilteredOrders(data.zip_codes); // Кірген бойда тапсырыстарды тарту
     } catch (err) {
       console.error('Login error:', err);
       setErrorMsg(t.loginError);
@@ -134,19 +134,37 @@ export default function MasterDashboard() {
     }
   };
 
-  const fetchFilteredOrders = async () => {
+  // ТАПСЫРЫСТАРДЫ ТАРТУ ЛОГИКАСЫ (ТҮЗЕТІЛДІ)
+  const fetchFilteredOrders = async (masterZipCodes: string) => {
     try {
+      // Алдымен барлық тапсырыстарды аламыз (жүйенің дұрыс жұмыс істеуін тексеру үшін)
       const { data: dbOrders, error } = await supabase
-        .from('orders')
+        .from('requests') // <--- ЕСКЕРТУ: Админ панельде тапсырыстар 'requests' кестесінде сақталуы мүмкін! Егер 'orders' болса, 'orders' деп қалдырыңыз. Қазір 'requests' деп көрейік.
         .select('*')
         .order('created_at', { ascending: false });
 
       if (error) {
         console.error('Fetch orders error:', error);
+        
+        // Егер 'requests' кестесінен қате шықса, 'orders' кестесінен байқап көреміз
+        const { data: fallbackOrders, error: fallbackError } = await supabase
+          .from('orders')
+          .select('*')
+          .order('created_at', { ascending: false });
+          
+          if (!fallbackError && fallbackOrders) {
+             setOrders(fallbackOrders);
+          }
         return;
       }
 
       if (dbOrders) {
+        // Егер мастердің ZIP кодына сай ғана көрсеткіңіз келсе, мына сүзгіні қосуға болады:
+        // const masterZips = masterZipCodes ? masterZipCodes.split(',').map(z => z.trim()) : [];
+        // const filtered = dbOrders.filter(order => masterZips.includes(order.address));
+        // setOrders(filtered);
+        
+        // Әзірге БАРЛЫҚ тапсырыстар шығатындай етейік (тексеру үшін)
         setOrders(dbOrders);
       }
     } catch (err) {
@@ -284,7 +302,15 @@ export default function MasterDashboard() {
 
         {/* Тапсырыстар тізімі */}
         <div className="bg-[#181926] rounded-3xl p-6 border border-slate-800 shadow-xl">
-          <h2 className="text-xl font-extrabold mb-6 text-amber-500">{t.availableOrders}</h2>
+          <div className="flex justify-between items-center mb-6">
+            <h2 className="text-xl font-extrabold text-amber-500">{t.availableOrders}</h2>
+            <button 
+              onClick={() => fetchFilteredOrders(masterData.zip_codes)}
+              className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 rounded-lg text-xs font-bold text-slate-300 transition flex items-center gap-2"
+            >
+              🔄 Жаңарту
+            </button>
+          </div>
 
           {orders.length === 0 ? (
             <div className="text-center p-12 text-slate-500 italic">

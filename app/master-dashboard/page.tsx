@@ -2,12 +2,10 @@
 import { useState, useEffect } from 'react';
 import { createClient } from '@supabase/supabase-js';
 
-// Supabase клиенті
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://your-supabase-url.supabase.co';
 const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'your-anon-key';
 const supabase = createClient(supabaseUrl, supabaseKey);
 
-// Тілдер сөздігі
 const translations: Record<string, any> = {
   kaz: {
     title: 'Master Dashboard',
@@ -27,8 +25,8 @@ const translations: Record<string, any> = {
     notSpecified: 'Көрсетілмеген',
     status: 'Статус:',
     logout: 'Шығу',
-    availableOrders: 'Қолжетімді тапсырыстар (Orders)',
-    noOrders: 'Әзірге жаңа тапсырыстар жоқ.',
+    availableOrders: 'Маған бөлінген тапсырыстар (Orders)',
+    noOrders: 'Әзірге сізге бөлінген жаңа тапсырыстар жоқ.',
     client: 'Клиент:',
     address: 'Мекенжай:',
   },
@@ -50,8 +48,8 @@ const translations: Record<string, any> = {
     notSpecified: 'Не указано',
     status: 'Статус:',
     logout: 'Выйти',
-    availableOrders: 'Доступные заказы (Orders)',
-    noOrders: 'Пока нет новых заказов.',
+    availableOrders: 'Назначенные мне заказы',
+    noOrders: 'Пока нет назначенных вам заказов.',
     client: 'Клиент:',
     address: 'Адрес:',
   },
@@ -73,8 +71,8 @@ const translations: Record<string, any> = {
     notSpecified: 'Not specified',
     status: 'Status:',
     logout: 'Logout',
-    availableOrders: 'Available Orders',
-    noOrders: 'No new orders yet.',
+    availableOrders: 'Assigned Orders',
+    noOrders: 'No assigned orders yet.',
     client: 'Client:',
     address: 'Address:',
   },
@@ -117,7 +115,8 @@ export default function MasterDashboard() {
         return;
       }
 
-      if (data.subscription_status !== 'active') {
+      const status = (data.subscription_status || '').toLowerCase();
+      if (status !== 'active') {
         setErrorMsg(t.notActive);
         setLoading(false);
         return;
@@ -125,7 +124,7 @@ export default function MasterDashboard() {
 
       setMasterData(data);
       setIsAuthenticated(true);
-      fetchFilteredOrders(data.zip_codes); // Кірген бойда тапсырыстарды тарту
+      fetchMasterOrders(data);
     } catch (err) {
       console.error('Login error:', err);
       setErrorMsg(t.loginError);
@@ -134,38 +133,33 @@ export default function MasterDashboard() {
     }
   };
 
-  // ТАПСЫРЫСТАРДЫ ТАРТУ ЛОГИКАСЫ (ТҮЗЕТІЛДІ)
-  const fetchFilteredOrders = async (masterZipCodes: string) => {
+  const fetchMasterOrders = async (currentMaster: any) => {
     try {
-      // Алдымен барлық тапсырыстарды аламыз (жүйенің дұрыс жұмыс істеуін тексеру үшін)
+      // Supabase-тен requests кестесіндегі осы мастерге тиесілі немесе ZIP коды сәйкес келетін заказдарды аламыз
       const { data: dbOrders, error } = await supabase
-        .from('requests') // <--- ЕСКЕРТУ: Админ панельде тапсырыстар 'requests' кестесінде сақталуы мүмкін! Егер 'orders' болса, 'orders' деп қалдырыңыз. Қазір 'requests' деп көрейік.
+        .from('requests')
         .select('*')
         .order('created_at', { ascending: false });
 
       if (error) {
         console.error('Fetch orders error:', error);
-        
-        // Егер 'requests' кестесінен қате шықса, 'orders' кестесінен байқап көреміз
-        const { data: fallbackOrders, error: fallbackError } = await supabase
-          .from('orders')
-          .select('*')
-          .order('created_at', { ascending: false });
-          
-          if (!fallbackError && fallbackOrders) {
-             setOrders(fallbackOrders);
-          }
         return;
       }
 
       if (dbOrders) {
-        // Егер мастердің ZIP кодына сай ғана көрсеткіңіз келсе, мына сүзгіні қосуға болады:
-        // const masterZips = masterZipCodes ? masterZipCodes.split(',').map(z => z.trim()) : [];
-        // const filtered = dbOrders.filter(order => masterZips.includes(order.address));
-        // setOrders(filtered);
-        
-        // Әзірге БАРЛЫҚ тапсырыстар шығатындай етейік (тексеру үшін)
-        setOrders(dbOrders);
+        // Мұнда тек осы мастердің ID-іне жіберілген (tech_id == master.id) немесе 
+        // мекенжайы/ZIP коды мастердің тізімінде бар заказдар сүзіліп алынады
+        const masterIdStr = String(currentMaster.id);
+        const masterZips = currentMaster.zip_codes ? currentMaster.zip_codes.split(',').map((z: string) => z.trim()) : [];
+
+        const filtered = dbOrders.filter(order => {
+          const isAssignedToTech = String(order.tech_id) === masterIdStr;
+          const isMatchingZip = masterZips.includes(String(order.address));
+          // Егер админ тікелей осы мастерге жіберсе немесе ZIP коды сәйкес келсе көрсетеміз
+          return isAssignedToTech || isMatchingZip;
+        });
+
+        setOrders(filtered);
       }
     } catch (err) {
       console.error('Error fetching orders:', err);
@@ -177,15 +171,14 @@ export default function MasterDashboard() {
     setMasterData(null);
     setEmail('');
     setPhone('');
+    setOrders([]);
   };
 
-  // 1. КІРУ ФОРМАСЫ
   if (!isAuthenticated) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen bg-[#12131C] text-white p-4">
         <div className="bg-[#181926] p-8 rounded-3xl shadow-2xl w-full max-w-md border border-slate-800 relative">
           
-          {/* Тіл ауыстырғыш батырмалар */}
           <div className="flex justify-center gap-2 mb-6">
             {(['kaz', 'rus', 'eng'] as const).map((l) => (
               <button
@@ -253,12 +246,10 @@ export default function MasterDashboard() {
     );
   }
 
-  // 2. МАСТЕРДІҢ ЖЕКЕ КАБИНЕТІ
   return (
     <div className="min-h-screen bg-[#12131C] text-white p-4 md:p-8">
       <div className="max-w-5xl mx-auto">
         
-        {/* Жоғарғы панель */}
         <div className="flex flex-col md:flex-row justify-between items-center mb-8 bg-[#181926] p-6 rounded-3xl border border-slate-800 shadow-xl gap-4">
           <div>
             <h1 className="text-2xl font-extrabold text-amber-500">
@@ -271,7 +262,6 @@ export default function MasterDashboard() {
           </div>
           
           <div className="flex items-center gap-3">
-            {/* Тіл ауыстырғыш */}
             <div className="flex gap-1 bg-[#12131C] p-1 rounded-xl border border-slate-800">
               {(['kaz', 'rus', 'eng'] as const).map((l) => (
                 <button
@@ -300,13 +290,12 @@ export default function MasterDashboard() {
           </div>
         </div>
 
-        {/* Тапсырыстар тізімі */}
         <div className="bg-[#181926] rounded-3xl p-6 border border-slate-800 shadow-xl">
           <div className="flex justify-between items-center mb-6">
             <h2 className="text-xl font-extrabold text-amber-500">{t.availableOrders}</h2>
             <button 
-              onClick={() => fetchFilteredOrders(masterData.zip_codes)}
-              className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 rounded-lg text-xs font-bold text-slate-300 transition flex items-center gap-2"
+              onClick={() => fetchMasterOrders(masterData)}
+              className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 rounded-lg text-xs font-bold text-slate-300 transition flex items-center gap-2 cursor-pointer"
             >
               🔄 Жаңарту
             </button>

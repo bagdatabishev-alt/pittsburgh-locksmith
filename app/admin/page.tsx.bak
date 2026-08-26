@@ -1,5 +1,6 @@
 'use client';
 import { useState, useEffect } from 'react';
+import { supabase } from '@/lib/supabase';
 
 const DICT = {
   kk: {
@@ -21,6 +22,7 @@ const DICT = {
     delete: 'Жою',
     loginTitle: 'Админ Панельге Кіру',
     placeholderPass: 'Құпия сөзді енгізіңіз...',
+    placeholderEmail: 'Email енгізіңіз...',
     loginBtn: 'Кіру',
     pricesTitle: 'Қызмет бағаларын өңдеу',
     saveBtn: 'Сақтау',
@@ -30,7 +32,10 @@ const DICT = {
     techEmail: 'Email',
     techZips: 'ZIP Кодтар',
     techStatus: 'Статус',
+    usePass: 'Мастер-парольмен кіру',
+    useEmail: 'Email/Парольмен кіру (Supabase Auth)',
     assign: 'Жіберу',
+    whatsapp: 'WhatsApp 📲',
     selectTech: 'Шеберді таңдаңыз'
   },
   ru: {
@@ -52,6 +57,7 @@ const DICT = {
     delete: 'Удалить',
     loginTitle: 'Вход в админ-панель',
     placeholderPass: 'Введите пароль...',
+    placeholderEmail: 'Введите Email...',
     loginBtn: 'Войти',
     pricesTitle: 'Редактирование цен на услуги',
     saveBtn: 'Сохранить',
@@ -61,7 +67,10 @@ const DICT = {
     techEmail: 'Email',
     techZips: 'ZIP коды',
     techStatus: 'Статус',
+    usePass: 'Вход по мастер-паролю',
+    useEmail: 'Вход по Email/Паролю (Supabase Auth)',
     assign: 'Назначить',
+    whatsapp: 'WhatsApp 📲',
     selectTech: 'Выберите мастера'
   },
   en: {
@@ -83,6 +92,7 @@ const DICT = {
     delete: 'Delete',
     loginTitle: 'Admin Panel Login',
     placeholderPass: 'Enter password...',
+    placeholderEmail: 'Enter email...',
     loginBtn: 'Login',
     pricesTitle: 'Edit Service Prices',
     saveBtn: 'Save',
@@ -92,7 +102,10 @@ const DICT = {
     techEmail: 'Email',
     techZips: 'ZIP Codes',
     techStatus: 'Status',
+    usePass: 'Login with Master Password',
+    useEmail: 'Login with Email/Password (Supabase Auth)',
     assign: 'Assign',
+    whatsapp: 'WhatsApp 📲',
     selectTech: 'Select Tech'
   }
 };
@@ -100,6 +113,9 @@ const DICT = {
 export default function AdminPage() {
   const [lang, setLang] = useState<'kk' | 'ru' | 'en'>('kk');
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [loginMode, setLoginMode] = useState<'pass' | 'email'>('pass');
+  
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   
   const [requests, setRequests] = useState<any[]>([]);
@@ -122,107 +138,197 @@ export default function AdminPage() {
   const t = DICT[lang];
 
   useEffect(() => {
-    const savedAuth = localStorage.getItem('admin_auth');
-    if (savedAuth === 'true') {
-      setIsAuthenticated(true);
+    async function checkAuth() {
+      const { data } = await supabase.auth.getSession();
+      if (data.session) {
+        setIsAuthenticated(true);
+      }
     }
-
-    const savedReqs = localStorage.getItem('site_requests');
-    if (savedReqs) {
-      try { setRequests(JSON.parse(savedReqs)); } catch (e) {}
-    } else {
-      // Бастапқы көрініп тұрған әдепкі заявкалар
-      const initialReqs = [
-        { id: 1, name: 'Bagdat Abishev. ABA Group', phone: '+9173496532', service: 'Car Locksmith', address: '15220', note: '', date: '25.08.2026, 03:26:53', tech_id: '' },
-        { id: 2, name: 'Bagdat Abishev. ABA Group', phone: '+9173496532', service: 'Emergency Lockout', address: '15220', note: '', date: '25.08.2026, 02:01:22', tech_id: '1' },
-        { id: 3, name: 'Bagdat Abishev. ABA Group', phone: '+9173496532', service: 'Lock Repair', address: '15220', note: '', date: '24.08.2026, 22:45:17', tech_id: '' },
-        { id: 4, name: 'Bagdat Abishev. ABA Group', phone: '+9173496532', service: 'Commercial Locksmith', address: '15220', note: '', date: '24.08.2026, 22:26:41', tech_id: '' },
-        { id: 5, name: 'Bagdat Abishev. ABA Group', phone: '+9173496532', service: 'Residential Locksmith', address: '15220', note: '', date: '24.08.2026, 21:00:36', tech_id: '' },
-      ];
-      setRequests(initialReqs);
-      localStorage.setItem('site_requests', JSON.stringify(initialReqs));
-    }
-
-    const savedTechs = localStorage.getItem('site_techs');
-    if (savedTechs) {
-      try { setTechs(JSON.parse(savedTechs)); } catch (e) {}
-    } else {
-      const initialTechs = [
-        { id: 1, full_name: 'Bagdat Abishev. ABA Group', phone: '+9173496532', email: 'master@example.com', zip_codes: '15220', subscription_status: 'active' }
-      ];
-      setTechs(initialTechs);
-      localStorage.setItem('site_techs', JSON.stringify(initialTechs));
-    }
-
-    const savedPrices = localStorage.getItem('site_prices');
-    if (savedPrices) {
-      try { setPrices(JSON.parse(savedPrices)); } catch (e) {}
-    }
-
-    const savedPhone = localStorage.getItem('site_phone');
-    if (savedPhone) setPhone(savedPhone);
-
-    const savedEmerg = localStorage.getItem('site_emerg');
-    if (savedEmerg !== null) setEmergencyEnabled(savedEmerg === 'true');
+    checkAuth();
   }, []);
 
-  const handleLogin = () => {
-    if (password === 'admin123') {
-      setIsAuthenticated(true);
-      localStorage.setItem('admin_auth', 'true');
+  useEffect(() => {
+    if (!isAuthenticated) return;
+
+    async function fetchData() {
+      const loadedRequests = JSON.parse(localStorage.getItem('site_requests') || '[]');
+      const loadedPrices = JSON.parse(localStorage.getItem('site_prices') || '{}');
+      const loadedPhone = localStorage.getItem('site_phone');
+      const loadedEmergency = localStorage.getItem('site_emergency');
+
+      if (loadedRequests.length > 0) setRequests(loadedRequests);
+      if (Object.keys(loadedPrices).length > 0) setPrices(prev => ({ ...prev, ...loadedPrices }));
+      if (loadedPhone) setPhone(loadedPhone);
+      if (loadedEmergency !== null) setEmergencyEnabled(loadedEmergency === 'true');
+
+      try {
+        const { data: dbOrders, error: ordersError } = await supabase.from('requests').select('*').order('created_at', { ascending: false });
+        if (ordersError) {
+          console.error('Supabase requests error:', ordersError);
+        } else if (dbOrders && dbOrders.length > 0) {
+          const formatted = dbOrders.map(o => ({
+            id: o.id,
+            name: o.name,
+            phone: o.phone,
+            service: o.service,
+            address: o.address,
+            note: o.note,
+            tech_id: o.tech_id || '',
+            date: o.created_at ? new Date(o.created_at).toLocaleString() : new Date().toLocaleString()
+          }));
+          setRequests(formatted);
+          localStorage.setItem('site_requests', JSON.stringify(formatted));
+        }
+
+        const { data: dbTechs } = await supabase.from('techs').select('*').order('created_at', { ascending: false });
+        if (dbTechs) {
+          setTechs(dbTechs);
+        }
+
+        const { data: dbServices } = await supabase.from('services').select('*');
+        if (dbServices && dbServices.length > 0) {
+          const newPrices: Record<string, string> = { ...prices };
+          dbServices.forEach((s) => { newPrices[String(s.id)] = String(s.price); });
+          setPrices(newPrices as any);
+        }
+
+        const { data: dbSettings } = await supabase.from('settings').select('*').maybeSingle();
+        if (dbSettings) {
+          if (dbSettings.phone) setPhone(dbSettings.phone);
+          if (dbSettings.emergency_enabled !== undefined) setEmergencyEnabled(dbSettings.emergency_enabled);
+        }
+      } catch (err) {
+        console.error('Supabase admin fetch error:', err);
+      }
+    }
+
+    fetchData();
+  }, [isAuthenticated]);
+
+  const handleLogin = async () => {
+    if (loginMode === 'pass') {
+      if (password === 'admin123') {
+        setIsAuthenticated(true);
+      } else {
+        alert('❌ Қате құпия сөз!');
+      }
     } else {
-      alert('❌ Қате құпия сөз! (admin123 теріп көріңіз)');
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password
+      });
+
+      if (error) {
+        alert('❌ Еңгізілген Email немесе Пароль қате: ' + error.message);
+      } else {
+        setIsAuthenticated(true);
+      }
     }
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
     setIsAuthenticated(false);
-    localStorage.removeItem('admin_auth');
     setPassword('');
+    setEmail('');
   };
 
-  const handleDeleteRequest = (id: number) => {
+  const handleDeleteRequest = async (id: number | string) => {
     if (confirm('Бұл тапсырысты өшіргіңіз келе ме?')) {
       const updated = requests.filter(r => r.id !== id);
       setRequests(updated);
       localStorage.setItem('site_requests', JSON.stringify(updated));
+
+      try {
+        await supabase.from('requests').delete().eq('id', id);
+      } catch (err) {
+        console.error('Supabase delete error:', err);
+      }
     }
   };
 
-  const handleAssignOrder = (orderId: number, techId: string) => {
+  const handleAssignOrder = async (orderId: number | string, techId: string) => {
     if (!techId) {
       alert('⚠️ Алдымен шеберді таңдаңыз!');
       return;
     }
+
     const updated = requests.map(r => r.id === orderId ? { ...r, tech_id: techId } : r);
     setRequests(updated);
     localStorage.setItem('site_requests', JSON.stringify(updated));
-    alert('✅ Тапсырыс шеберге сәтті жіберілді!');
-  };
 
-  const handleDeleteTech = (id: number) => {
-    if (confirm('Бұл шеберді өшіргіңіз келе ме?')) {
-      const updated = techs.filter(t => t.id !== id);
-      setTechs(updated);
-      localStorage.setItem('site_techs', JSON.stringify(updated));
+    try {
+      const { error } = await supabase.from('requests').update({ tech_id: techId }).eq('id', orderId);
+      if (error) {
+        console.error('Supabase update order error:', error);
+        alert('❌ Қате кетті: ' + error.message);
+      } else {
+        alert('✅ Тапсырыс шеберге сәтті сақталды!');
+      }
+    } catch (err) {
+      console.error('Supabase assign order error:', err);
     }
   };
 
-  const handleStatusChange = (id: number, newStatus: string) => {
-    const updated = techs.map(t => t.id === id ? { ...t, subscription_status: newStatus } : t);
-    setTechs(updated);
-    localStorage.setItem('site_techs', JSON.stringify(updated));
+  // WHATSAPP ҚА ЖІБЕРУ ФУНКЦИЯСЫ
+  const sendToWhatsApp = (req: any) => {
+    const assignedTech = techs.find(t => String(t.id) === String(req.tech_id));
+    const techPhone = assignedTech ? assignedTech.phone || '' : '';
+    const text = `🛠 Жаңа тапсырыс!\n👤 Аты: ${req.name || '-'}\n📞 Тел: ${req.phone || '-'}\n🚗 Қызмет: ${req.service || '-'}\n📍 Мекенжай/Ескерту: ${req.address || '-'} ${req.note ? '(' + req.note + ')' : ''}`;
+    window.open(`https://api.whatsapp.com/send?phone=${techPhone}&text=${encodeURIComponent(text)}`, '_blank');
   };
 
-  const handleSavePrices = () => {
+  const handleDeleteTech = async (id: number | string) => {
+    if (confirm('Бұл шеберді өшіргіңіз келе ме?')) {
+      const updated = techs.filter(t => t.id !== id);
+      setTechs(updated);
+
+      try {
+        await supabase.from('techs').delete().eq('id', id);
+      } catch (err) {
+        console.error('Supabase delete tech error:', err);
+      }
+    }
+  };
+
+  const handleStatusChange = async (id: number | string, newStatus: string) => {
+    const updated = techs.map(t => t.id === id ? { ...t, subscription_status: newStatus } : t);
+    setTechs(updated);
+
+    try {
+      await supabase.from('techs').update({ subscription_status: newStatus }).eq('id', id);
+    } catch (err) {
+      console.error('Supabase status update error:', err);
+    }
+  };
+
+  const handleSavePrices = async () => {
     localStorage.setItem('site_prices', JSON.stringify(prices));
+
+    try {
+      const updates = Object.entries(prices).map(([id, price]) => ({
+        id: Number(id),
+        price: Number(price)
+      }));
+      await supabase.from('services').upsert(updates);
+    } catch (err) {
+      console.error('Supabase prices save error:', err);
+    }
+
     setSavedMsg('✅ Бағалар сәтті сақталды!');
     setTimeout(() => setSavedMsg(''), 3000);
   };
 
-  const handleSaveSettings = () => {
+  const handleSaveSettings = async () => {
     localStorage.setItem('site_phone', phone);
-    localStorage.setItem('site_emerg', String(emergencyEnabled));
+    localStorage.setItem('site_emergency', String(emergencyEnabled));
+
+    try {
+      await supabase.from('settings').upsert([{ id: 1, phone, emergency_enabled: emergencyEnabled }]);
+    } catch (err) {
+      console.error('Supabase settings save error:', err);
+    }
+
     setSavedMsg('✅ Баптаулар сәтті сақталды!');
     setTimeout(() => setSavedMsg(''), 3000);
   };
@@ -230,8 +336,24 @@ export default function AdminPage() {
   if (!isAuthenticated) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen bg-[#12131C] text-white p-4">
-        <div className="bg-[#181926] p-8 rounded-3xl shadow-2xl w-80 border border-slate-800">
-          <h1 className="text-2xl font-extrabold mb-6 text-center text-amber-500">{t.loginTitle}</h1>
+        <div className="bg-[#181926] p-8 rounded-3xl shadow-2xl w-96 border border-slate-800">
+          <h1 className="text-2xl font-extrabold mb-4 text-center text-amber-500">{t.loginTitle}</h1>
+          
+          <div className="flex gap-2 mb-6 bg-[#12131C] p-1 rounded-xl border border-slate-800 text-[11px] font-bold">
+            <button onClick={() => setLoginMode('pass')} className={`flex-1 py-2 rounded-lg ${loginMode === 'pass' ? 'bg-amber-500 text-slate-950' : 'text-slate-400'}`}>{t.usePass}</button>
+            <button onClick={() => setLoginMode('email')} className={`flex-1 py-2 rounded-lg ${loginMode === 'email' ? 'bg-amber-500 text-slate-950' : 'text-slate-400'}`}>{t.useEmail}</button>
+          </div>
+
+          {loginMode === 'email' && (
+            <input 
+              type="email" 
+              className="w-full p-3.5 bg-[#12131C] border border-slate-700 rounded-xl mb-3 text-white focus:outline-none focus:border-amber-500" 
+              placeholder={t.placeholderEmail} 
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+            />
+          )}
+
           <input 
             type="password" 
             className="w-full p-3.5 bg-[#12131C] border border-slate-700 rounded-xl mb-4 text-white focus:outline-none focus:border-amber-500" 
@@ -239,6 +361,7 @@ export default function AdminPage() {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
           />
+          
           <button onClick={handleLogin} className="w-full bg-gradient-to-r from-amber-500 to-orange-500 text-slate-950 font-black py-3.5 rounded-xl transition shadow-lg">{t.loginBtn}</button>
         </div>
       </div>
@@ -249,6 +372,7 @@ export default function AdminPage() {
     <div className="min-h-screen bg-[#12131C] text-white p-4 md:p-8">
       <div className="max-w-6xl mx-auto">
         
+        {/* ЖОҒАРҒЫ МӘЗІР */}
         <div className="flex flex-col lg:flex-row justify-between items-center mb-8 bg-[#181926] p-6 rounded-3xl border border-slate-800 shadow-xl gap-4">
           <h1 className="text-2xl font-extrabold text-amber-500">{t.title}</h1>
           
@@ -277,6 +401,7 @@ export default function AdminPage() {
           </div>
         </div>
 
+        {/* ЗАКАЗДАР БӨЛІМІ */}
         {activeTab === 'requests' && (
           <div className="bg-[#181926] rounded-3xl p-6 border border-slate-800 shadow-xl">
             <h2 className="text-xl font-extrabold mb-6 text-amber-500">{t.requests}</h2>
@@ -302,9 +427,9 @@ export default function AdminPage() {
                   ) : (
                     requests.map((req) => (
                       <tr key={req.id} className="hover:bg-slate-800/40 transition">
-                        <td className="p-4 font-bold">{req.name}</td>
-                        <td className="p-4 text-amber-400 font-bold">{req.phone}</td>
-                        <td className="p-4 text-sm">{req.service}</td>
+                        <td className="p-4 font-bold">{req.name || '-'}</td>
+                        <td className="p-4 text-amber-400 font-bold">{req.phone || '-'}</td>
+                        <td className="p-4 text-sm">{req.service || '-'}</td>
                         <td className="p-4 text-slate-300 text-sm">{req.address} {req.note ? `(${req.note})` : ''}</td>
                         <td className="p-4 text-slate-500 text-xs">{req.date}</td>
                         <td className="p-4 text-center">
@@ -320,7 +445,7 @@ export default function AdminPage() {
                               <option value="">-- {t.selectTech} --</option>
                               {techs.map(tech => (
                                 <option key={tech.id} value={tech.id}>
-                                  {tech.full_name}
+                                  {tech.full_name || tech.email || 'Мастер #' + tech.id}
                                 </option>
                               ))}
                             </select>
@@ -330,6 +455,14 @@ export default function AdminPage() {
                               className="bg-amber-500 hover:bg-amber-400 text-slate-950 px-3 py-1.5 rounded-lg text-xs font-black transition shadow"
                             >
                               {t.assign}
+                            </button>
+
+                            {/* WHATSAPP БАТЫРМАСЫ */}
+                            <button 
+                              onClick={() => sendToWhatsApp(req)}
+                              className="bg-[#25D366] hover:bg-[#20ba5a] text-white px-3 py-1.5 rounded-lg text-xs font-bold transition shadow"
+                            >
+                              {t.whatsapp}
                             </button>
 
                             <button 
@@ -349,6 +482,7 @@ export default function AdminPage() {
           </div>
         )}
 
+        {/* ШЕБЕРЛЕР БӨЛІМІ */}
         {activeTab === 'techs' && (
           <div className="bg-[#181926] rounded-3xl p-6 border border-slate-800 shadow-xl">
             <h2 className="text-xl font-extrabold mb-6 text-amber-500">{t.techs}</h2>
@@ -374,13 +508,13 @@ export default function AdminPage() {
                   ) : (
                     techs.map((tech) => (
                       <tr key={tech.id} className="hover:bg-slate-800/40 transition">
-                        <td className="p-4 font-bold">{tech.full_name}</td>
-                        <td className="p-4 text-amber-400 font-bold">{tech.phone}</td>
-                        <td className="p-4 text-sm text-slate-300">{tech.email}</td>
-                        <td className="p-4 text-sm font-mono text-slate-300">{tech.zip_codes}</td>
+                        <td className="p-4 font-bold">{tech.full_name || '-'}</td>
+                        <td className="p-4 text-amber-400 font-bold">{tech.phone || '-'}</td>
+                        <td className="p-4 text-sm text-slate-300">{tech.email || '-'}</td>
+                        <td className="p-4 text-sm font-mono text-slate-300">{tech.zip_codes || '-'}</td>
                         <td className="p-4">
                           <select 
-                            value={tech.subscription_status} 
+                            value={tech.subscription_status || 'pending'} 
                             onChange={(e) => handleStatusChange(tech.id, e.target.value)}
                             className="bg-[#12131C] border border-slate-700 text-amber-400 font-bold px-2.5 py-1 rounded-lg text-xs focus:outline-none focus:border-amber-500 cursor-pointer"
                           >
@@ -406,6 +540,7 @@ export default function AdminPage() {
           </div>
         )}
 
+        {/* БАҒАЛАРДЫ АУЫСТЫРУ БӨЛІМІ */}
         {activeTab === 'prices' && (
           <div className="bg-[#181926] rounded-3xl p-6 border border-slate-800 shadow-xl max-w-xl">
             <h2 className="text-xl font-extrabold mb-6 text-amber-500">{t.pricesTitle}</h2>
@@ -440,6 +575,7 @@ export default function AdminPage() {
           </div>
         )}
 
+        {/* БАПТАУЛАР БӨЛІМІ */}
         {activeTab === 'settings' && (
           <div className="bg-[#181926] rounded-3xl p-6 border border-slate-800 shadow-xl max-w-xl">
             <h2 className="text-xl font-extrabold mb-6 text-amber-500">{t.settings}</h2>

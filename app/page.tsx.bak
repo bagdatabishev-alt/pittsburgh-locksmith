@@ -1,7 +1,7 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
-
+import AppointmentWidget from './components/AppointmentWidget';
 const DICT = {
   en: {
     heroTitle: 'Locked Out?',
@@ -260,7 +260,8 @@ export default function Home() {
     localStorage.setItem('site_requests', JSON.stringify([newRequest, ...existingRequests]));
 
     try {
-      await supabase.from('orders').insert([
+      // Деректерді админ панель көре алатындай 'requests' кестесіне жазамыз[cite: 5]
+      await supabase.from('requests').insert([
         {
           service: newRequest.service,
           name: newRequest.name,
@@ -270,7 +271,7 @@ export default function Home() {
         }
       ]);
     } catch (err) {
-      console.error('Supabase order insert error:', err);
+      console.error('Supabase request insert error:', err);
     }
 
     const message = `🚨 *NEW SERVICE REQUEST*%0A%0A🔑 *Service:* ${newRequest.service}%0A👤 *Name:* ${newRequest.name}%0A📞 *Phone:* ${newRequest.phone}%0A📍 *Address:* ${newRequest.address}%0A📝 *Note:* ${newRequest.note || 'None'}`;
@@ -329,6 +330,7 @@ export default function Home() {
           >
             {t.callNow}
           </button>
+		  <AppointmentWidget />
           <button
             onClick={() => { setSelectedService({ id: '0', title: t.generalRequest }); setIsModalOpen(true); }}
             className="bg-[#1E202E] border border-slate-700/60 text-slate-200 font-bold py-4 px-8 rounded-2xl text-base hover:bg-slate-800 transition"

@@ -1,7 +1,7 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
-
+import AppointmentWidget from './components/AppointmentWidget';
 const DICT = {
   en: {
     heroTitle: 'Locked Out?',
@@ -330,6 +330,7 @@ export default function Home() {
           >
             {t.callNow}
           </button>
+		 <AppointmentWidget lang={lang} />
           <button
             onClick={() => { setSelectedService({ id: '0', title: t.generalRequest }); setIsModalOpen(true); }}
             className="bg-[#1E202E] border border-slate-700/60 text-slate-200 font-bold py-4 px-8 rounded-2xl text-base hover:bg-slate-800 transition"

@@ -5,18 +5,21 @@ import { supabase } from '@/lib/supabase';
 const DICT = {
   kk: {
     title: 'Панель управления сайтом',
-    requests: 'Өтініштер',
+    requests: 'Шұғыл өтініштер (Requests)',
+    appointments: 'Жоспарлы тапсырыстар (Appointments)',
     techs: 'Шеберлер',
     prices: 'Бағалар',
     settings: 'Баптаулар',
     back: 'Сайтқа қайту',
     logout: 'Шығу',
     noReq: 'Әзірге өтініштер жоқ.',
+    noApp: 'Әзірге жоспарлы тапсырыстар жоқ.',
     noTechs: 'Әзірге тіркелген шеберлер жоқ.',
     name: 'Аты',
     phone: 'Телефон',
     service: 'Қызмет',
     note: 'Мекенжай / Ескерту',
+    dateTime: 'Күні мен уақыты',
     date: 'Уақыты',
     actions: 'Әрекет',
     delete: 'Жою',
@@ -35,22 +38,26 @@ const DICT = {
     usePass: 'Мастер-парольмен кіру',
     useEmail: 'Email/Парольмен кіру (Supabase Auth)',
     assign: 'Жіберу',
+    whatsapp: 'WhatsApp 📲',
     selectTech: 'Шеберді таңдаңыз'
   },
   ru: {
     title: 'Панель управления сайтом',
-    requests: 'Заявки',
+    requests: 'Шұғыл өтініштер (Requests)',
+    appointments: 'Жоспарлы тапсырыстар (Appointments)',
     techs: 'Мастера',
     prices: 'Цены',
     settings: 'Настройки',
     back: 'На сайт',
     logout: 'Выйти',
     noReq: 'Заявок пока нет.',
+    noApp: 'Запланированных заявок пока нет.',
     noTechs: 'Зарегистрированных мастеров пока нет.',
     name: 'Имя',
     phone: 'Телефон',
     service: 'Услуга',
     note: 'Адрес / Заметка',
+    dateTime: 'Дата и время',
     date: 'Дата',
     actions: 'Действие',
     delete: 'Удалить',
@@ -69,22 +76,26 @@ const DICT = {
     usePass: 'Вход по мастер-паролю',
     useEmail: 'Вход по Email/Паролю (Supabase Auth)',
     assign: 'Назначить',
+    whatsapp: 'WhatsApp 📲',
     selectTech: 'Выберите мастера'
   },
   en: {
     title: 'Site Control Panel',
     requests: 'Requests',
+    appointments: 'Appointments',
     techs: 'Technicians',
     prices: 'Prices',
     settings: 'Settings',
     back: 'Back to Site',
     logout: 'Logout',
     noReq: 'No requests yet.',
+    noApp: 'No appointments yet.',
     noTechs: 'No registered technicians yet.',
     name: 'Name',
     phone: 'Phone',
     service: 'Service',
     note: 'Address / Note',
+    dateTime: 'Date & Time',
     date: 'Date',
     actions: 'Action',
     delete: 'Delete',
@@ -103,6 +114,7 @@ const DICT = {
     usePass: 'Login with Master Password',
     useEmail: 'Login with Email/Password (Supabase Auth)',
     assign: 'Assign',
+    whatsapp: 'WhatsApp 📲',
     selectTech: 'Select Tech'
   }
 };
@@ -116,8 +128,9 @@ export default function AdminPage() {
   const [password, setPassword] = useState('');
   
   const [requests, setRequests] = useState<any[]>([]);
+  const [appointments, setAppointments] = useState<any[]>([]);
   const [techs, setTechs] = useState<any[]>([]);
-  const [activeTab, setActiveTab] = useState<'requests' | 'techs' | 'prices' | 'settings'>('requests');
+  const [activeTab, setActiveTab] = useState<'requests' | 'appointments' | 'techs' | 'prices' | 'settings'>('requests');
   const [savedMsg, setSavedMsg] = useState('');
 
   const [prices, setPrices] = useState({
@@ -149,20 +162,21 @@ export default function AdminPage() {
 
     async function fetchData() {
       const loadedRequests = JSON.parse(localStorage.getItem('site_requests') || '[]');
+      const loadedAppointments = JSON.parse(localStorage.getItem('site_appointments') || '[]');
       const loadedPrices = JSON.parse(localStorage.getItem('site_prices') || '{}');
       const loadedPhone = localStorage.getItem('site_phone');
       const loadedEmergency = localStorage.getItem('site_emergency');
 
       if (loadedRequests.length > 0) setRequests(loadedRequests);
+      if (loadedAppointments.length > 0) setAppointments(loadedAppointments);
       if (Object.keys(loadedPrices).length > 0) setPrices(prev => ({ ...prev, ...loadedPrices }));
       if (loadedPhone) setPhone(loadedPhone);
       if (loadedEmergency !== null) setEmergencyEnabled(loadedEmergency === 'true');
 
       try {
+        // Шұғыл өтініштерді жүктеу (requests)
         const { data: dbOrders, error: ordersError } = await supabase.from('requests').select('*').order('created_at', { ascending: false });
-        if (ordersError) {
-          console.error('Supabase requests error:', ordersError);
-        } else if (dbOrders && dbOrders.length > 0) {
+        if (!ordersError && dbOrders && dbOrders.length > 0) {
           const formatted = dbOrders.map(o => ({
             id: o.id,
             name: o.name,
@@ -175,6 +189,22 @@ export default function AdminPage() {
           }));
           setRequests(formatted);
           localStorage.setItem('site_requests', JSON.stringify(formatted));
+        }
+
+        // Жоспарлы тапсырыстарды жүктеу (appointments)
+        const { data: dbAppointments, error: appError } = await supabase.from('appointments').select('*').order('created_at', { ascending: false });
+        if (!appError && dbAppointments && dbAppointments.length > 0) {
+          const formattedApp = dbAppointments.map(a => ({
+            id: a.id,
+            name: a.name,
+            phone: a.phone,
+            service: a.service,
+            date_time: a.date_time || a.appointment_date || '-',
+            note: a.note || a.address || '',
+            tech_id: a.tech_id || ''
+          }));
+          setAppointments(formattedApp);
+          localStorage.setItem('site_appointments', JSON.stringify(formattedApp));
         }
 
         const { data: dbTechs } = await supabase.from('techs').select('*').order('created_at', { ascending: false });
@@ -210,11 +240,7 @@ export default function AdminPage() {
         alert('❌ Қате құпия сөз!');
       }
     } else {
-      const { error } = await supabase.auth.signInWithPassword({
-        email,
-        password
-      });
-
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) {
         alert('❌ Еңгізілген Email немесе Пароль қате: ' + error.message);
       } else {
@@ -230,12 +256,12 @@ export default function AdminPage() {
     setEmail('');
   };
 
+  // Шұғыл тапсырысты өшіру
   const handleDeleteRequest = async (id: number | string) => {
     if (confirm('Бұл тапсырысты өшіргіңіз келе ме?')) {
       const updated = requests.filter(r => r.id !== id);
       setRequests(updated);
       localStorage.setItem('site_requests', JSON.stringify(updated));
-
       try {
         await supabase.from('requests').delete().eq('id', id);
       } catch (err) {
@@ -244,34 +270,74 @@ export default function AdminPage() {
     }
   };
 
+  // Жоспарлы тапсырысты өшіру
+  const handleDeleteAppointment = async (id: number | string) => {
+    if (confirm('Бұл жоспарлы тапсырысты өшіргіңіз келе ме?')) {
+      const updated = appointments.filter(a => a.id !== id);
+      setAppointments(updated);
+      localStorage.setItem('site_appointments', JSON.stringify(updated));
+      try {
+        await supabase.from('appointments').delete().eq('id', id);
+      } catch (err) {
+        console.error('Supabase delete appointment error:', err);
+      }
+    }
+  };
+
+  // Шұғыл тапсырысқа шебер тағайындау
   const handleAssignOrder = async (orderId: number | string, techId: string) => {
     if (!techId) {
       alert('⚠️ Алдымен шеберді таңдаңыз!');
       return;
     }
-
     const updated = requests.map(r => r.id === orderId ? { ...r, tech_id: techId } : r);
     setRequests(updated);
     localStorage.setItem('site_requests', JSON.stringify(updated));
-
     try {
-      const { error } = await supabase.from('requests').update({ tech_id: techId }).eq('id', orderId);
-      if (error) {
-        console.error('Supabase update order error:', error);
-        alert('❌ Қате кетті: ' + error.message);
-      } else {
-        alert('✅ Тапсырыс шеберге сәтті жіберілді!');
-      }
+      await supabase.from('requests').update({ tech_id: techId }).eq('id', orderId);
+      alert('✅ Тапсырыс шеберге сәтті сақталды!');
     } catch (err) {
       console.error('Supabase assign order error:', err);
     }
+  };
+
+  // Жоспарлы тапсырысқа шебер тағайындау
+  const handleAssignAppointment = async (appId: number | string, techId: string) => {
+    if (!techId) {
+      alert('⚠️ Алдымен шеберді таңдаңыз!');
+      return;
+    }
+    const updated = appointments.map(a => a.id === appId ? { ...a, tech_id: techId } : a);
+    setAppointments(updated);
+    localStorage.setItem('site_appointments', JSON.stringify(updated));
+    try {
+      await supabase.from('appointments').update({ tech_id: techId }).eq('id', appId);
+      alert('✅ Жоспарлы тапсырыс шеберге сәтті сақталды!');
+    } catch (err) {
+      console.error('Supabase assign appointment error:', err);
+    }
+  };
+
+  // WhatsApp-қа жіберу (Шұғыл)
+  const sendToWhatsApp = (req: any) => {
+    const assignedTech = techs.find(t => String(t.id) === String(req.tech_id));
+    const techPhone = assignedTech ? assignedTech.phone || '' : '';
+    const text = `🛠 Жаңа тапсырыс!\n👤 Аты: ${req.name || '-'}\n📞 Тел: ${req.phone || '-'}\n🚗 Қызмет: ${req.service || '-'}\n📍 Мекенжай/Ескерту: ${req.address || '-'} ${req.note ? '(' + req.note + ')' : ''}`;
+    window.open(`https://api.whatsapp.com/send?phone=${techPhone}&text=${encodeURIComponent(text)}`, '_blank');
+  };
+
+  // WhatsApp-қа жіберу (Жоспарлы)
+  const sendAppointmentToWhatsApp = (app: any) => {
+    const assignedTech = techs.find(t => String(t.id) === String(app.tech_id));
+    const techPhone = assignedTech ? assignedTech.phone || '' : '';
+    const text = `📅 Жоспарлы тапсырыс!\n👤 Аты: ${app.name || '-'}\n📞 Тел: ${app.phone || '-'}\n🚗 Қызмет: ${app.service || '-'}\n⏰ Күні/Уақыты: ${app.date_time || '-'}\n📝 Ескерту: ${app.note || '-'}`;
+    window.open(`https://api.whatsapp.com/send?phone=${techPhone}&text=${encodeURIComponent(text)}`, '_blank');
   };
 
   const handleDeleteTech = async (id: number | string) => {
     if (confirm('Бұл шеберді өшіргіңіз келе ме?')) {
       const updated = techs.filter(t => t.id !== id);
       setTechs(updated);
-
       try {
         await supabase.from('techs').delete().eq('id', id);
       } catch (err) {
@@ -283,7 +349,6 @@ export default function AdminPage() {
   const handleStatusChange = async (id: number | string, newStatus: string) => {
     const updated = techs.map(t => t.id === id ? { ...t, subscription_status: newStatus } : t);
     setTechs(updated);
-
     try {
       await supabase.from('techs').update({ subscription_status: newStatus }).eq('id', id);
     } catch (err) {
@@ -293,7 +358,6 @@ export default function AdminPage() {
 
   const handleSavePrices = async () => {
     localStorage.setItem('site_prices', JSON.stringify(prices));
-
     try {
       const updates = Object.entries(prices).map(([id, price]) => ({
         id: Number(id),
@@ -303,7 +367,6 @@ export default function AdminPage() {
     } catch (err) {
       console.error('Supabase prices save error:', err);
     }
-
     setSavedMsg('✅ Бағалар сәтті сақталды!');
     setTimeout(() => setSavedMsg(''), 3000);
   };
@@ -311,13 +374,11 @@ export default function AdminPage() {
   const handleSaveSettings = async () => {
     localStorage.setItem('site_phone', phone);
     localStorage.setItem('site_emergency', String(emergencyEnabled));
-
     try {
       await supabase.from('settings').upsert([{ id: 1, phone, emergency_enabled: emergencyEnabled }]);
     } catch (err) {
       console.error('Supabase settings save error:', err);
     }
-
     setSavedMsg('✅ Баптаулар сәтті сақталды!');
     setTimeout(() => setSavedMsg(''), 3000);
   };
@@ -327,30 +388,14 @@ export default function AdminPage() {
       <div className="flex flex-col items-center justify-center min-h-screen bg-[#12131C] text-white p-4">
         <div className="bg-[#181926] p-8 rounded-3xl shadow-2xl w-96 border border-slate-800">
           <h1 className="text-2xl font-extrabold mb-4 text-center text-amber-500">{t.loginTitle}</h1>
-          
           <div className="flex gap-2 mb-6 bg-[#12131C] p-1 rounded-xl border border-slate-800 text-[11px] font-bold">
             <button onClick={() => setLoginMode('pass')} className={`flex-1 py-2 rounded-lg ${loginMode === 'pass' ? 'bg-amber-500 text-slate-950' : 'text-slate-400'}`}>{t.usePass}</button>
             <button onClick={() => setLoginMode('email')} className={`flex-1 py-2 rounded-lg ${loginMode === 'email' ? 'bg-amber-500 text-slate-950' : 'text-slate-400'}`}>{t.useEmail}</button>
           </div>
-
           {loginMode === 'email' && (
-            <input 
-              type="email" 
-              className="w-full p-3.5 bg-[#12131C] border border-slate-700 rounded-xl mb-3 text-white focus:outline-none focus:border-amber-500" 
-              placeholder={t.placeholderEmail} 
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-            />
+            <input type="email" className="w-full p-3.5 bg-[#12131C] border border-slate-700 rounded-xl mb-3 text-white focus:outline-none focus:border-amber-500" placeholder={t.placeholderEmail} value={email} onChange={(e) => setEmail(e.target.value)} />
           )}
-
-          <input 
-            type="password" 
-            className="w-full p-3.5 bg-[#12131C] border border-slate-700 rounded-xl mb-4 text-white focus:outline-none focus:border-amber-500" 
-            placeholder={t.placeholderPass} 
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-          />
-          
+          <input type="password" className="w-full p-3.5 bg-[#12131C] border border-slate-700 rounded-xl mb-4 text-white focus:outline-none focus:border-amber-500" placeholder={t.placeholderPass} value={password} onChange={(e) => setPassword(e.target.value)} />
           <button onClick={handleLogin} className="w-full bg-gradient-to-r from-amber-500 to-orange-500 text-slate-950 font-black py-3.5 rounded-xl transition shadow-lg">{t.loginBtn}</button>
         </div>
       </div>
@@ -359,38 +404,41 @@ export default function AdminPage() {
 
   return (
     <div className="min-h-screen bg-[#12131C] text-white p-4 md:p-8">
-      <div className="max-w-6xl mx-auto">
+      <div className="max-w-7xl mx-auto">
         
         {/* ЖОҒАРҒЫ МӘЗІР */}
         <div className="flex flex-col lg:flex-row justify-between items-center mb-8 bg-[#181926] p-6 rounded-3xl border border-slate-800 shadow-xl gap-4">
-          <h1 className="text-2xl font-extrabold text-amber-500">{t.title}</h1>
+          <h1 className="text-xl font-extrabold text-amber-500">{t.title}</h1>
           
-          <div className="flex flex-wrap items-center gap-3">
+          <div className="flex flex-wrap items-center gap-2">
             <div className="flex bg-[#12131C] p-1 rounded-xl border border-slate-800">
               <button onClick={() => setLang('kk')} className={`px-3 py-1 text-xs font-black rounded-lg ${lang === 'kk' ? 'bg-amber-500 text-slate-950' : 'text-slate-400'}`}>ҚАЗ</button>
               <button onClick={() => setLang('ru')} className={`px-3 py-1 text-xs font-black rounded-lg ${lang === 'ru' ? 'bg-amber-500 text-slate-950' : 'text-slate-400'}`}>РУС</button>
               <button onClick={() => setLang('en')} className={`px-3 py-1 text-xs font-black rounded-lg ${lang === 'en' ? 'bg-amber-500 text-slate-950' : 'text-slate-400'}`}>ENG</button>
             </div>
             
-            <button onClick={() => setActiveTab('requests')} className={`px-4 py-2 rounded-xl text-sm font-bold transition ${activeTab === 'requests' ? 'bg-amber-500 text-slate-950 shadow-lg' : 'bg-slate-800 text-slate-300'}`}>
+            <button onClick={() => setActiveTab('requests')} className={`px-3.5 py-2 rounded-xl text-xs font-bold transition ${activeTab === 'requests' ? 'bg-amber-500 text-slate-950 shadow-lg' : 'bg-slate-800 text-slate-300'}`}>
               {t.requests} ({requests.length})
             </button>
-            <button onClick={() => setActiveTab('techs')} className={`px-4 py-2 rounded-xl text-sm font-bold transition ${activeTab === 'techs' ? 'bg-amber-500 text-slate-950 shadow-lg' : 'bg-slate-800 text-slate-300'}`}>
+            <button onClick={() => setActiveTab('appointments')} className={`px-3.5 py-2 rounded-xl text-xs font-bold transition ${activeTab === 'appointments' ? 'bg-amber-500 text-slate-950 shadow-lg' : 'bg-slate-800 text-slate-300'}`}>
+              {t.appointments} ({appointments.length})
+            </button>
+            <button onClick={() => setActiveTab('techs')} className={`px-3.5 py-2 rounded-xl text-xs font-bold transition ${activeTab === 'techs' ? 'bg-amber-500 text-slate-950 shadow-lg' : 'bg-slate-800 text-slate-300'}`}>
               {t.techs} ({techs.length})
             </button>
-            <button onClick={() => setActiveTab('prices')} className={`px-4 py-2 rounded-xl text-sm font-bold transition ${activeTab === 'prices' ? 'bg-amber-500 text-slate-950 shadow-lg' : 'bg-slate-800 text-slate-300'}`}>
+            <button onClick={() => setActiveTab('prices')} className={`px-3.5 py-2 rounded-xl text-xs font-bold transition ${activeTab === 'prices' ? 'bg-amber-500 text-slate-950 shadow-lg' : 'bg-slate-800 text-slate-300'}`}>
               {t.prices}
             </button>
-            <button onClick={() => setActiveTab('settings')} className={`px-4 py-2 rounded-xl text-sm font-bold transition ${activeTab === 'settings' ? 'bg-amber-500 text-slate-950 shadow-lg' : 'bg-slate-800 text-slate-300'}`}>
+            <button onClick={() => setActiveTab('settings')} className={`px-3.5 py-2 rounded-xl text-xs font-bold transition ${activeTab === 'settings' ? 'bg-amber-500 text-slate-950 shadow-lg' : 'bg-slate-800 text-slate-300'}`}>
               {t.settings}
             </button>
             
-            <a href="/" className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-sm font-bold transition">{t.back}</a>
-            <button onClick={handleLogout} className="px-4 py-2 bg-red-600/20 hover:bg-red-600 text-red-400 hover:text-white rounded-xl text-sm font-bold transition border border-red-600/30">{t.logout}</button>
+            <a href="/" className="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-bold transition">{t.back}</a>
+            <button onClick={handleLogout} className="px-3.5 py-2 bg-red-600/20 hover:bg-red-600 text-red-400 hover:text-white rounded-xl text-xs font-bold transition border border-red-600/30">{t.logout}</button>
           </div>
         </div>
 
-        {/* ЗАКАЗДАР БӨЛІМІ */}
+        {/* ШҰҒЫЛ ӨТІНІШТЕР БӨЛІМІ (REQUESTS) */}
         {activeTab === 'requests' && (
           <div className="bg-[#181926] rounded-3xl p-6 border border-slate-800 shadow-xl">
             <h2 className="text-xl font-extrabold mb-6 text-amber-500">{t.requests}</h2>
@@ -409,9 +457,7 @@ export default function AdminPage() {
                 <tbody className="divide-y divide-slate-800/60">
                   {requests.length === 0 ? (
                     <tr>
-                      <td colSpan={6} className="text-center p-8 text-slate-500 italic">
-                        {t.noReq}
-                      </td>
+                      <td colSpan={6} className="text-center p-8 text-slate-500 italic">{t.noReq}</td>
                     </tr>
                   ) : (
                     requests.map((req) => (
@@ -439,17 +485,84 @@ export default function AdminPage() {
                               ))}
                             </select>
 
-                            <button 
-                              onClick={() => handleAssignOrder(req.id, req.tech_id)}
-                              className="bg-amber-500 hover:bg-amber-400 text-slate-950 px-3 py-1.5 rounded-lg text-xs font-black transition shadow"
-                            >
+                            <button onClick={() => handleAssignOrder(req.id, req.tech_id)} className="bg-amber-500 hover:bg-amber-400 text-slate-950 px-3 py-1.5 rounded-lg text-xs font-black transition shadow">
                               {t.assign}
                             </button>
 
-                            <button 
-                              onClick={() => handleDeleteRequest(req.id)}
-                              className="bg-red-500/20 hover:bg-red-600 text-red-400 hover:text-white px-3 py-1.5 rounded-lg text-xs font-bold transition border border-red-500/30"
+                            <button onClick={() => sendToWhatsApp(req)} className="bg-[#25D366] hover:bg-[#20ba5a] text-white px-3 py-1.5 rounded-lg text-xs font-bold transition shadow">
+                              {t.whatsapp}
+                            </button>
+
+                            <button onClick={() => handleDeleteRequest(req.id)} className="bg-red-500/20 hover:bg-red-600 text-red-400 hover:text-white px-3 py-1.5 rounded-lg text-xs font-bold transition border border-red-500/30">
+                              {t.delete}
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {/* ЖОСПАРЛЫ ТАПСЫРЫСТАР БӨЛІМІ (APPOINTMENTS) */}
+        {activeTab === 'appointments' && (
+          <div className="bg-[#181926] rounded-3xl p-6 border border-slate-800 shadow-xl">
+            <h2 className="text-xl font-extrabold mb-6 text-amber-500">{t.appointments}</h2>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="border-b border-slate-800 text-slate-400 text-xs uppercase tracking-wider">
+                    <th className="p-4">{t.name}</th>
+                    <th className="p-4">{t.phone}</th>
+                    <th className="p-4">{t.service}</th>
+                    <th className="p-4">{t.dateTime}</th>
+                    <th className="p-4">{t.note}</th>
+                    <th className="p-4 text-center">{t.actions}</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-800/60">
+                  {appointments.length === 0 ? (
+                    <tr>
+                      <td colSpan={6} className="text-center p-8 text-slate-500 italic">{t.noApp}</td>
+                    </tr>
+                  ) : (
+                    appointments.map((app) => (
+                      <tr key={app.id} className="hover:bg-slate-800/40 transition">
+                        <td className="p-4 font-bold">{app.name || '-'}</td>
+                        <td className="p-4 text-amber-400 font-bold">{app.phone || '-'}</td>
+                        <td className="p-4 text-sm">{app.service || '-'}</td>
+                        <td className="p-4 text-amber-300 font-semibold text-xs">{app.date_time || '-'}</td>
+                        <td className="p-4 text-slate-300 text-sm">{app.note || '-'}</td>
+                        <td className="p-4 text-center">
+                          <div className="flex items-center justify-center gap-2 flex-wrap">
+                            <select 
+                              value={app.tech_id || ''} 
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                setAppointments(appointments.map(a => a.id === app.id ? { ...a, tech_id: val } : a));
+                              }}
+                              className="bg-[#12131C] border border-slate-700 text-amber-400 font-bold px-2.5 py-1.5 rounded-lg text-xs focus:outline-none focus:border-amber-500 cursor-pointer"
                             >
+                              <option value="">-- {t.selectTech} --</option>
+                              {techs.map(tech => (
+                                <option key={tech.id} value={tech.id}>
+                                  {tech.full_name || tech.email || 'Мастер #' + tech.id}
+                                </option>
+                              ))}
+                            </select>
+
+                            <button onClick={() => handleAssignAppointment(app.id, app.tech_id)} className="bg-amber-500 hover:bg-amber-400 text-slate-950 px-3 py-1.5 rounded-lg text-xs font-black transition shadow">
+                              {t.assign}
+                            </button>
+
+                            <button onClick={() => sendAppointmentToWhatsApp(app)} className="bg-[#25D366] hover:bg-[#20ba5a] text-white px-3 py-1.5 rounded-lg text-xs font-bold transition shadow">
+                              {t.whatsapp}
+                            </button>
+
+                            <button onClick={() => handleDeleteAppointment(app.id)} className="bg-red-500/20 hover:bg-red-600 text-red-400 hover:text-white px-3 py-1.5 rounded-lg text-xs font-bold transition border border-red-500/30">
                               {t.delete}
                             </button>
                           </div>
@@ -482,9 +595,7 @@ export default function AdminPage() {
                 <tbody className="divide-y divide-slate-800/60">
                   {techs.length === 0 ? (
                     <tr>
-                      <td colSpan={6} className="text-center p-8 text-slate-500 italic">
-                        {t.noTechs}
-                      </td>
+                      <td colSpan={6} className="text-center p-8 text-slate-500 italic">{t.noTechs}</td>
                     </tr>
                   ) : (
                     techs.map((tech) => (
@@ -505,10 +616,7 @@ export default function AdminPage() {
                           </select>
                         </td>
                         <td className="p-4 text-center">
-                          <button 
-                            onClick={() => handleDeleteTech(tech.id)}
-                            className="bg-red-500/20 hover:bg-red-600 text-red-400 hover:text-white px-3 py-1.5 rounded-lg text-xs font-bold transition border border-red-500/30"
-                          >
+                          <button onClick={() => handleDeleteTech(tech.id)} className="bg-red-500/20 hover:bg-red-600 text-red-400 hover:text-white px-3 py-1.5 rounded-lg text-xs font-bold transition border border-red-500/30">
                             {t.delete}
                           </button>
                         </td>

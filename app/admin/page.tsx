@@ -39,7 +39,8 @@ const DICT = {
     useEmail: 'Email/Парольмен кіру (Supabase Auth)',
     assign: 'Жіберу',
     whatsapp: 'WhatsApp 📲',
-    selectTech: 'Шеберді таңдаңыз'
+    selectTech: 'Шеберді таңдаңыз',
+    statusHeader: 'Статус (Мастер жауабы)'
   },
   ru: {
     title: 'Панель управления сайтом',
@@ -77,7 +78,8 @@ const DICT = {
     useEmail: 'Вход по Email/Паролю (Supabase Auth)',
     assign: 'Назначить',
     whatsapp: 'WhatsApp 📲',
-    selectTech: 'Выберите мастера'
+    selectTech: 'Выберите мастера',
+    statusHeader: 'Статус (Ответ мастера)'
   },
   en: {
     title: 'Site Control Panel',
@@ -115,7 +117,8 @@ const DICT = {
     useEmail: 'Login with Email/Password (Supabase Auth)',
     assign: 'Assign',
     whatsapp: 'WhatsApp 📲',
-    selectTech: 'Select Tech'
+    selectTech: 'Select Tech',
+    statusHeader: 'Status (Tech Reply)'
   }
 };
 
@@ -174,7 +177,7 @@ export default function AdminPage() {
       if (loadedEmergency !== null) setEmergencyEnabled(loadedEmergency === 'true');
 
       try {
-        // Шұғыл өтініштерді жүктеу (requests)
+        // Шұғыл өтініштерді жүктеу (requests) - статус өрісімен қоса
         const { data: dbOrders, error: ordersError } = await supabase.from('requests').select('*').order('created_at', { ascending: false });
         if (!ordersError && dbOrders && dbOrders.length > 0) {
           const formatted = dbOrders.map(o => ({
@@ -185,6 +188,7 @@ export default function AdminPage() {
             address: o.address,
             note: o.note,
             tech_id: o.tech_id || '',
+            status: o.status || 'pending', // Мастер статусы
             date: o.created_at ? new Date(o.created_at).toLocaleString() : new Date().toLocaleString()
           }));
           setRequests(formatted);
@@ -201,7 +205,8 @@ export default function AdminPage() {
             service: a.service,
             date_time: a.date_time || a.appointment_date || '-',
             note: a.note || a.address || '',
-            tech_id: a.tech_id || ''
+            tech_id: a.tech_id || '',
+            status: a.status || 'pending'
           }));
           setAppointments(formattedApp);
           localStorage.setItem('site_appointments', JSON.stringify(formattedApp));
@@ -451,13 +456,14 @@ export default function AdminPage() {
                     <th className="p-4">{t.service}</th>
                     <th className="p-4">{t.note}</th>
                     <th className="p-4">{t.date}</th>
+                    <th className="p-4">{t.statusHeader || 'Статус'}</th>
                     <th className="p-4 text-center">{t.actions}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-800/60">
                   {requests.length === 0 ? (
                     <tr>
-                      <td colSpan={6} className="text-center p-8 text-slate-500 italic">{t.noReq}</td>
+                      <td colSpan={7} className="text-center p-8 text-slate-500 italic">{t.noReq}</td>
                     </tr>
                   ) : (
                     requests.map((req) => (
@@ -467,6 +473,14 @@ export default function AdminPage() {
                         <td className="p-4 text-sm">{req.service || '-'}</td>
                         <td className="p-4 text-slate-300 text-sm">{req.address} {req.note ? `(${req.note})` : ''}</td>
                         <td className="p-4 text-slate-500 text-xs">{req.date}</td>
+                        
+                        {/* Мастердің статусы көрсетілетін жер */}
+                        <td className="p-4 text-xs font-bold">
+                          {req.status === 'completed' && <span className="text-green-400">Орындалды ✅</span>}
+                          {req.status === 'returned' && <span className="text-red-400">Істей алмады ❌</span>}
+                          {(!req.status || req.status === 'pending') && <span className="text-amber-400">Күтуде ⏳</span>}
+                        </td>
+
                         <td className="p-4 text-center">
                           <div className="flex items-center justify-center gap-2 flex-wrap">
                             <select 
@@ -520,13 +534,14 @@ export default function AdminPage() {
                     <th className="p-4">{t.service}</th>
                     <th className="p-4">{t.dateTime}</th>
                     <th className="p-4">{t.note}</th>
+                    <th className="p-4">{t.statusHeader || 'Статус'}</th>
                     <th className="p-4 text-center">{t.actions}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-800/60">
                   {appointments.length === 0 ? (
                     <tr>
-                      <td colSpan={6} className="text-center p-8 text-slate-500 italic">{t.noApp}</td>
+                      <td colSpan={7} className="text-center p-8 text-slate-500 italic">{t.noApp}</td>
                     </tr>
                   ) : (
                     appointments.map((app) => (
@@ -536,6 +551,14 @@ export default function AdminPage() {
                         <td className="p-4 text-sm">{app.service || '-'}</td>
                         <td className="p-4 text-amber-300 font-semibold text-xs">{app.date_time || '-'}</td>
                         <td className="p-4 text-slate-300 text-sm">{app.note || '-'}</td>
+                        
+                        {/* Жоспарлы тапсырыс статусы */}
+                        <td className="p-4 text-xs font-bold">
+                          {app.status === 'completed' && <span className="text-green-400">Орындалды ✅</span>}
+                          {app.status === 'returned' && <span className="text-red-400">Істей алмады ❌</span>}
+                          {(!app.status || app.status === 'pending') && <span className="text-amber-400">Күтуде ⏳</span>}
+                        </td>
+
                         <td className="p-4 text-center">
                           <div className="flex items-center justify-center gap-2 flex-wrap">
                             <select 
@@ -658,8 +681,8 @@ export default function AdminPage() {
                 <label className="block text-slate-400 text-xs font-bold mb-1">6. Lock Repair ($):</label>
                 <input type="text" value={prices['6']} onChange={(e) => setPrices({...prices, '6': e.target.value})} className="w-full p-3 bg-[#12131C] border border-slate-700 rounded-xl text-white font-bold" />
               </div>
-              <button onClick={handleSavePrices} className="w-full bg-gradient-to-r from-amber-500 to-orange-500 text-slate-950 font-black py-3.5 rounded-xl transition shadow-lg mt-2">{t.saveBtn}</button>
-              {savedMsg && <p className="text-emerald-400 font-bold text-center mt-2">{savedMsg}</p>}
+              <button onClick={handleSavePrices} className="w-full bg-amber-500 hover:bg-amber-400 text-slate-950 font-black py-3.5 rounded-xl transition shadow-lg">{t.saveBtn}</button>
+              {savedMsg && <p className="text-green-400 text-center font-bold text-sm mt-2">{savedMsg}</p>}
             </div>
           </div>
         )}
@@ -674,11 +697,11 @@ export default function AdminPage() {
                 <input type="text" value={phone} onChange={(e) => setPhone(e.target.value)} className="w-full p-3 bg-[#12131C] border border-slate-700 rounded-xl text-white font-bold" />
               </div>
               <div className="flex items-center gap-3 pt-2">
-                <input type="checkbox" id="emerg" checked={emergencyEnabled} onChange={(e) => setEmergencyEnabled(e.target.checked)} className="w-5 h-5 accent-amber-500 cursor-pointer" />
-                <label htmlFor="emerg" className="text-sm font-bold text-slate-300 cursor-pointer">{t.emergencyLabel}</label>
+                <input type="checkbox" checked={emergencyEnabled} onChange={(e) => setEmergencyEnabled(e.target.checked)} className="w-5 h-5 accent-amber-500 cursor-pointer" />
+                <label className="text-slate-300 text-sm font-bold">{t.emergencyLabel}</label>
               </div>
-              <button onClick={handleSaveSettings} className="w-full bg-gradient-to-r from-amber-500 to-orange-500 text-slate-950 font-black py-3.5 rounded-xl transition shadow-lg mt-4">{t.saveBtn}</button>
-              {savedMsg && <p className="text-emerald-400 font-bold text-center mt-2">{savedMsg}</p>}
+              <button onClick={handleSaveSettings} className="w-full bg-amber-500 hover:bg-amber-400 text-slate-950 font-black py-3.5 rounded-xl transition shadow-lg mt-4">{t.saveBtn}</button>
+              {savedMsg && <p className="text-green-400 text-center font-bold text-sm mt-2">{savedMsg}</p>}
             </div>
           </div>
         )}

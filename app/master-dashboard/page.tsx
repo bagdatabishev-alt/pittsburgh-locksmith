@@ -31,6 +31,8 @@ const translations: Record<string, any> = {
     address: 'Мекенжай:',
     completeBtn: 'Орындалды ✅',
     cannotCompleteBtn: 'Істей алмадым ❌',
+    helpBtn: 'Көмек керек 🆘',
+    pauseBtn: 'Кідірту ⏸️',
   },
   rus: {
     title: 'Master Dashboard',
@@ -56,6 +58,8 @@ const translations: Record<string, any> = {
     address: 'Адрес:',
     completeBtn: 'Выполнено ✅',
     cannotCompleteBtn: 'Не смог ❌',
+    helpBtn: 'Нужна помощь 🆘',
+    pauseBtn: 'Пауза ⏸️',
   },
   eng: {
     title: 'Master Dashboard',
@@ -81,6 +85,8 @@ const translations: Record<string, any> = {
     address: 'Address:',
     completeBtn: 'Completed ✅',
     cannotCompleteBtn: 'Cannot Do ❌',
+    helpBtn: 'Need Help 🆘',
+    pauseBtn: 'Pause ⏸️',
   },
 };
 
@@ -159,7 +165,6 @@ export default function MasterDashboard() {
           const isAssignedToTech = String(order.tech_id) === masterIdStr;
           const isMatchingZip = masterZips.includes(String(order.address));
           
-          // Тек тек ғана орындалмаған және бас тартылмаған активті заказды көрсетеміз
           const orderStatus = order.status || 'pending';
           const isActive = orderStatus !== 'completed' && orderStatus !== 'returned';
 
@@ -173,7 +178,7 @@ export default function MasterDashboard() {
     }
   };
 
-  // Заказ статусын өзгерту (Орындалды немесе Бас тартылды)
+  // Заказ статусын жаңарту (Орындалды, Бас тарту, Көмек сұрау немесе Кідірту)[cite: 1]
   const handleUpdateOrderStatus = async (orderId: number, newStatus: string) => {
     try {
       const { error } = await supabase
@@ -187,7 +192,6 @@ export default function MasterDashboard() {
         return;
       }
 
-      // Тізімді жаңарту
       fetchMasterOrders(masterData);
     } catch (err) {
       console.error('Error:', err);
@@ -345,12 +349,22 @@ export default function MasterDashboard() {
                       <span className="text-slate-500 text-xs">
                         {order.created_at ? new Date(order.created_at).toLocaleString() : ''}
                       </span>
+                      {order.status === 'help_requested' && (
+                        <span className="bg-orange-500/20 text-orange-400 text-xs font-bold px-2 py-0.5 rounded border border-orange-500/30">
+                          🆘 Көмек сұралды
+                        </span>
+                      )}
+                      {order.status === 'paused' && (
+                        <span className="bg-purple-500/20 text-purple-400 text-xs font-bold px-2 py-0.5 rounded border border-purple-500/30">
+                          ⏸️ Кідіртілді
+                        </span>
+                      )}
                     </div>
                     <h3 className="text-base font-bold text-white mt-1">{t.client} {order.name}</h3>
                     <p className="text-slate-300 text-sm mt-0.5">{t.address} <span className="text-amber-300 font-semibold">{order.address}</span> {order.note ? `(${order.note})` : ''}</p>
                   </div>
                   
-                  {/* Батырмалар: Қоңырау шалу, Орындалды, Бас тарту */}
+                  {/* Батырмалар: Қоңырау, Орындалды, Бас тарту, Көмек сұрау, Кідірту */}
                   <div className="flex flex-wrap items-center gap-2 w-full md:w-auto justify-end">
                     <a
                       href={`tel:${order.phone}`}
@@ -364,6 +378,20 @@ export default function MasterDashboard() {
                       className="bg-blue-600/20 hover:bg-blue-600 text-blue-400 hover:text-white px-3 py-2 rounded-xl text-xs font-bold transition border border-blue-600/30 cursor-pointer"
                     >
                       {t.completeBtn}
+                    </button>
+
+                    <button
+                      onClick={() => handleUpdateOrderStatus(order.id, 'help_requested')}
+                      className="bg-orange-600/20 hover:bg-orange-600 text-orange-400 hover:text-white px-3 py-2 rounded-xl text-xs font-bold transition border border-orange-600/30 cursor-pointer"
+                    >
+                      {t.helpBtn}
+                    </button>
+
+                    <button
+                      onClick={() => handleUpdateOrderStatus(order.id, 'paused')}
+                      className="bg-purple-600/20 hover:bg-purple-600 text-purple-400 hover:text-white px-3 py-2 rounded-xl text-xs font-bold transition border border-purple-600/30 cursor-pointer"
+                    >
+                      {t.pauseBtn}
                     </button>
 
                     <button

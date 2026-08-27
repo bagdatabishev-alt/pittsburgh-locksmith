@@ -474,10 +474,12 @@ export default function AdminPage() {
                         <td className="p-4 text-slate-300 text-sm">{req.address} {req.note ? `(${req.note})` : ''}</td>
                         <td className="p-4 text-slate-500 text-xs">{req.date}</td>
                         
-                        {/* Мастердің статусы көрсетілетін жер */}
+                        {/* Мастердің статусы көрсетілетін жер (Жаңа статус батырмалары қосылды) */}
                         <td className="p-4 text-xs font-bold">
                           {req.status === 'completed' && <span className="text-green-400">Орындалды ✅</span>}
                           {req.status === 'returned' && <span className="text-red-400">Істей алмады ❌</span>}
+                          {req.status === 'help_requested' && <span className="text-orange-400">Көмек сұралды 🆘</span>}
+                          {req.status === 'paused' && <span className="text-purple-400">Кідіртілді ⏸️</span>}
                           {(!req.status || req.status === 'pending') && <span className="text-amber-400">Күтуде ⏳</span>}
                         </td>
 
@@ -556,6 +558,8 @@ export default function AdminPage() {
                         <td className="p-4 text-xs font-bold">
                           {app.status === 'completed' && <span className="text-green-400">Орындалды ✅</span>}
                           {app.status === 'returned' && <span className="text-red-400">Істей алмады ❌</span>}
+                          {app.status === 'help_requested' && <span className="text-orange-400">Көмек сұралды 🆘</span>}
+                          {app.status === 'paused' && <span className="text-purple-400">Кідіртілді ⏸️</span>}
                           {(!app.status || app.status === 'pending') && <span className="text-amber-400">Күтуде ⏳</span>}
                         </td>
 

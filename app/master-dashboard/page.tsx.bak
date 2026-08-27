@@ -29,6 +29,8 @@ const translations: Record<string, any> = {
     noOrders: 'Әзірге сізге бөлінген жаңа тапсырыстар жоқ.',
     client: 'Клиент:',
     address: 'Мекенжай:',
+    completeBtn: 'Орындалды ✅',
+    cannotCompleteBtn: 'Істей алмадым ❌',
   },
   rus: {
     title: 'Master Dashboard',
@@ -52,6 +54,8 @@ const translations: Record<string, any> = {
     noOrders: 'Пока нет назначенных вам заказов.',
     client: 'Клиент:',
     address: 'Адрес:',
+    completeBtn: 'Выполнено ✅',
+    cannotCompleteBtn: 'Не смог ❌',
   },
   eng: {
     title: 'Master Dashboard',
@@ -75,6 +79,8 @@ const translations: Record<string, any> = {
     noOrders: 'No assigned orders yet.',
     client: 'Client:',
     address: 'Address:',
+    completeBtn: 'Completed ✅',
+    cannotCompleteBtn: 'Cannot Do ❌',
   },
 };
 
@@ -135,7 +141,6 @@ export default function MasterDashboard() {
 
   const fetchMasterOrders = async (currentMaster: any) => {
     try {
-      // Supabase-тен requests кестесінен осы мастердің ID-іне тікелей жіберілген (tech_id) немесе ZIP коды сәйкес заказдарды аламыз
       const { data: dbOrders, error } = await supabase
         .from('requests')
         .select('*')
@@ -153,14 +158,39 @@ export default function MasterDashboard() {
         const filtered = dbOrders.filter(order => {
           const isAssignedToTech = String(order.tech_id) === masterIdStr;
           const isMatchingZip = masterZips.includes(String(order.address));
-          // Егер админ тікелей осы мастерге жіберсе немесе ZIP коды сай келсе көрсетеміз
-          return isAssignedToTech || isMatchingZip;
+          
+          // Тек тек ғана орындалмаған және бас тартылмаған активті заказды көрсетеміз
+          const orderStatus = order.status || 'pending';
+          const isActive = orderStatus !== 'completed' && orderStatus !== 'returned';
+
+          return (isAssignedToTech || isMatchingZip) && isActive;
         });
 
         setOrders(filtered);
       }
     } catch (err) {
       console.error('Error fetching orders:', err);
+    }
+  };
+
+  // Заказ статусын өзгерту (Орындалды немесе Бас тартылды)
+  const handleUpdateOrderStatus = async (orderId: number, newStatus: string) => {
+    try {
+      const { error } = await supabase
+        .from('requests')
+        .update({ status: newStatus })
+        .eq('id', orderId);
+
+      if (error) {
+        console.error('Error updating order status:', error);
+        alert('Статусты өзгерту кезінде қате шықты');
+        return;
+      }
+
+      // Тізімді жаңарту
+      fetchMasterOrders(masterData);
+    } catch (err) {
+      console.error('Error:', err);
     }
   };
 
@@ -320,13 +350,28 @@ export default function MasterDashboard() {
                     <p className="text-slate-300 text-sm mt-0.5">{t.address} <span className="text-amber-300 font-semibold">{order.address}</span> {order.note ? `(${order.note})` : ''}</p>
                   </div>
                   
-                  <div className="flex items-center gap-3 w-full md:w-auto justify-end">
+                  {/* Батырмалар: Қоңырау шалу, Орындалды, Бас тарту */}
+                  <div className="flex flex-wrap items-center gap-2 w-full md:w-auto justify-end">
                     <a
                       href={`tel:${order.phone}`}
-                      className="bg-emerald-500/20 hover:bg-emerald-600 text-emerald-400 hover:text-white px-4 py-2.5 rounded-xl text-xs font-bold transition border border-emerald-500/30 text-center flex-1 md:flex-none"
+                      className="bg-emerald-500/20 hover:bg-emerald-600 text-emerald-400 hover:text-white px-3 py-2 rounded-xl text-xs font-bold transition border border-emerald-500/30 text-center"
                     >
                       📞 {order.phone}
                     </a>
+                    
+                    <button
+                      onClick={() => handleUpdateOrderStatus(order.id, 'completed')}
+                      className="bg-blue-600/20 hover:bg-blue-600 text-blue-400 hover:text-white px-3 py-2 rounded-xl text-xs font-bold transition border border-blue-600/30 cursor-pointer"
+                    >
+                      {t.completeBtn}
+                    </button>
+
+                    <button
+                      onClick={() => handleUpdateOrderStatus(order.id, 'returned')}
+                      className="bg-red-600/20 hover:bg-red-600 text-red-400 hover:text-white px-3 py-2 rounded-xl text-xs font-bold transition border border-red-600/30 cursor-pointer"
+                    >
+                      {t.cannotCompleteBtn}
+                    </button>
                   </div>
                 </div>
               ))}

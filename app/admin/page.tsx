@@ -12,6 +12,7 @@ const DICT = {
     settings: 'Баптаулар',
     back: 'Сайтқа қайту',
     logout: 'Шығу',
+    refresh: 'Жаңарту 🔄',
     noReq: 'Әзірге өтініштер жоқ.',
     noApp: 'Әзірге жоспарлы тапсырыстар жоқ.',
     noTechs: 'Әзірге тіркелген шеберлер жоқ.',
@@ -51,6 +52,7 @@ const DICT = {
     settings: 'Настройки',
     back: 'На сайт',
     logout: 'Выйти',
+    refresh: 'Обновить 🔄',
     noReq: 'Заявок пока нет.',
     noApp: 'Запланированных заявок пока нет.',
     noTechs: 'Зарегистрированных мастеров пока нет.',
@@ -90,6 +92,7 @@ const DICT = {
     settings: 'Settings',
     back: 'Back to Site',
     logout: 'Logout',
+    refresh: 'Refresh 🔄',
     noReq: 'No requests yet.',
     noApp: 'No appointments yet.',
     noTechs: 'No registered technicians yet.',
@@ -160,80 +163,77 @@ export default function AdminPage() {
     checkAuth();
   }, []);
 
+  const fetchData = async () => {
+    const loadedRequests = JSON.parse(localStorage.getItem('site_requests') || '[]');
+    const loadedAppointments = JSON.parse(localStorage.getItem('site_appointments') || '[]');
+    const loadedPrices = JSON.parse(localStorage.getItem('site_prices') || '{}');
+    const loadedPhone = localStorage.getItem('site_phone');
+    const loadedEmergency = localStorage.getItem('site_emergency');
+
+    if (loadedRequests.length > 0) setRequests(loadedRequests);
+    if (loadedAppointments.length > 0) setAppointments(loadedAppointments);
+    if (Object.keys(loadedPrices).length > 0) setPrices(prev => ({ ...prev, ...loadedPrices }));
+    if (loadedPhone) setPhone(loadedPhone);
+    if (loadedEmergency !== null) setEmergencyEnabled(loadedEmergency === 'true');
+
+    try {
+      const { data: dbOrders, error: ordersError } = await supabase.from('requests').select('*').order('created_at', { ascending: false });
+      if (!ordersError && dbOrders) {
+        const formatted = dbOrders.map(o => ({
+          id: o.id,
+          name: o.name,
+          phone: o.phone,
+          service: o.service,
+          address: o.address,
+          note: o.note,
+          tech_id: o.tech_id || '',
+          status: o.status || 'pending',
+          date: o.created_at ? new Date(o.created_at).toLocaleString() : new Date().toLocaleString()
+        }));
+        setRequests(formatted);
+        localStorage.setItem('site_requests', JSON.stringify(formatted));
+      }
+
+      const { data: dbAppointments, error: appError } = await supabase.from('appointments').select('*').order('created_at', { ascending: false });
+      if (!appError && dbAppointments) {
+        const formattedApp = dbAppointments.map(a => ({
+          id: a.id,
+          name: a.name,
+          phone: a.phone,
+          service: a.service,
+          date_time: a.date_time || a.appointment_date || '-',
+          note: a.note || a.address || '',
+          tech_id: a.tech_id || '',
+          status: a.status || 'pending'
+        }));
+        setAppointments(formattedApp);
+        localStorage.setItem('site_appointments', JSON.stringify(formattedApp));
+      }
+
+      const { data: dbTechs } = await supabase.from('techs').select('*').order('created_at', { ascending: false });
+      if (dbTechs) {
+        setTechs(dbTechs);
+      }
+
+      const { data: dbServices } = await supabase.from('services').select('*');
+      if (dbServices && dbServices.length > 0) {
+        const newPrices: Record<string, string> = { ...prices };
+        dbServices.forEach((s) => { newPrices[String(s.id)] = String(s.price); });
+        setPrices(newPrices as any);
+      }
+
+      const { data: dbSettings } = await supabase.from('settings').select('*').maybeSingle();
+      if (dbSettings) {
+        if (dbSettings.phone) setPhone(dbSettings.phone);
+        if (dbSettings.emergency_enabled !== undefined) setEmergencyEnabled(dbSettings.emergency_enabled);
+      }
+    } catch (err) {
+      console.error('Supabase admin fetch error:', err);
+    }
+  };
+
   useEffect(() => {
     if (!isAuthenticated) return;
-
-    async function fetchData() {
-      const loadedRequests = JSON.parse(localStorage.getItem('site_requests') || '[]');
-      const loadedAppointments = JSON.parse(localStorage.getItem('site_appointments') || '[]');
-      const loadedPrices = JSON.parse(localStorage.getItem('site_prices') || '{}');
-      const loadedPhone = localStorage.getItem('site_phone');
-      const loadedEmergency = localStorage.getItem('site_emergency');
-
-      if (loadedRequests.length > 0) setRequests(loadedRequests);
-      if (loadedAppointments.length > 0) setAppointments(loadedAppointments);
-      if (Object.keys(loadedPrices).length > 0) setPrices(prev => ({ ...prev, ...loadedPrices }));
-      if (loadedPhone) setPhone(loadedPhone);
-      if (loadedEmergency !== null) setEmergencyEnabled(loadedEmergency === 'true');
-
-      try {
-        // Шұғыл өтініштерді жүктеу (requests) - статус өрісімен қоса
-        const { data: dbOrders, error: ordersError } = await supabase.from('requests').select('*').order('created_at', { ascending: false });
-        if (!ordersError && dbOrders && dbOrders.length > 0) {
-          const formatted = dbOrders.map(o => ({
-            id: o.id,
-            name: o.name,
-            phone: o.phone,
-            service: o.service,
-            address: o.address,
-            note: o.note,
-            tech_id: o.tech_id || '',
-            status: o.status || 'pending', // Мастер статусы
-            date: o.created_at ? new Date(o.created_at).toLocaleString() : new Date().toLocaleString()
-          }));
-          setRequests(formatted);
-          localStorage.setItem('site_requests', JSON.stringify(formatted));
-        }
-
-        // Жоспарлы тапсырыстарды жүктеу (appointments)
-        const { data: dbAppointments, error: appError } = await supabase.from('appointments').select('*').order('created_at', { ascending: false });
-        if (!appError && dbAppointments && dbAppointments.length > 0) {
-          const formattedApp = dbAppointments.map(a => ({
-            id: a.id,
-            name: a.name,
-            phone: a.phone,
-            service: a.service,
-            date_time: a.date_time || a.appointment_date || '-',
-            note: a.note || a.address || '',
-            tech_id: a.tech_id || '',
-            status: a.status || 'pending'
-          }));
-          setAppointments(formattedApp);
-          localStorage.setItem('site_appointments', JSON.stringify(formattedApp));
-        }
-
-        const { data: dbTechs } = await supabase.from('techs').select('*').order('created_at', { ascending: false });
-        if (dbTechs) {
-          setTechs(dbTechs);
-        }
-
-        const { data: dbServices } = await supabase.from('services').select('*');
-        if (dbServices && dbServices.length > 0) {
-          const newPrices: Record<string, string> = { ...prices };
-          dbServices.forEach((s) => { newPrices[String(s.id)] = String(s.price); });
-          setPrices(newPrices as any);
-        }
-
-        const { data: dbSettings } = await supabase.from('settings').select('*').maybeSingle();
-        if (dbSettings) {
-          if (dbSettings.phone) setPhone(dbSettings.phone);
-          if (dbSettings.emergency_enabled !== undefined) setEmergencyEnabled(dbSettings.emergency_enabled);
-        }
-      } catch (err) {
-        console.error('Supabase admin fetch error:', err);
-      }
-    }
-
     fetchData();
   }, [isAuthenticated]);
 
@@ -261,7 +261,6 @@ export default function AdminPage() {
     setEmail('');
   };
 
-  // Шұғыл тапсырысты өшіру
   const handleDeleteRequest = async (id: number | string) => {
     if (confirm('Бұл тапсырысты өшіргіңіз келе ме?')) {
       const updated = requests.filter(r => r.id !== id);
@@ -275,7 +274,6 @@ export default function AdminPage() {
     }
   };
 
-  // Жоспарлы тапсырысты өшіру
   const handleDeleteAppointment = async (id: number | string) => {
     if (confirm('Бұл жоспарлы тапсырысты өшіргіңіз келе ме?')) {
       const updated = appointments.filter(a => a.id !== id);
@@ -289,41 +287,40 @@ export default function AdminPage() {
     }
   };
 
-  // Шұғыл тапсырысқа шебер тағайындау
+  // МҰНДА СТАТУСҚА 'pending' ҚОСЫЛДЫ
   const handleAssignOrder = async (orderId: number | string, techId: string) => {
     if (!techId) {
       alert('⚠️ Алдымен шеберді таңдаңыз!');
       return;
     }
-    const updated = requests.map(r => r.id === orderId ? { ...r, tech_id: techId } : r);
+    const updated = requests.map(r => r.id === orderId ? { ...r, tech_id: techId, status: 'pending' } : r);
     setRequests(updated);
     localStorage.setItem('site_requests', JSON.stringify(updated));
     try {
-      await supabase.from('requests').update({ tech_id: techId }).eq('id', orderId);
+      await supabase.from('requests').update({ tech_id: techId, status: 'pending' }).eq('id', orderId);
       alert('✅ Тапсырыс шеберге сәтті сақталды!');
     } catch (err) {
       console.error('Supabase assign order error:', err);
     }
   };
 
-  // Жоспарлы тапсырысқа шебер тағайындау
+  // МҰНДА ДА СТАТУСҚА 'pending' ҚОСЫЛДЫ
   const handleAssignAppointment = async (appId: number | string, techId: string) => {
     if (!techId) {
       alert('⚠️ Алдымен шеберді таңдаңыз!');
       return;
     }
-    const updated = appointments.map(a => a.id === appId ? { ...a, tech_id: techId } : a);
+    const updated = appointments.map(a => a.id === appId ? { ...a, tech_id: techId, status: 'pending' } : a);
     setAppointments(updated);
     localStorage.setItem('site_appointments', JSON.stringify(updated));
     try {
-      await supabase.from('appointments').update({ tech_id: techId }).eq('id', appId);
+      await supabase.from('appointments').update({ tech_id: techId, status: 'pending' }).eq('id', appId);
       alert('✅ Жоспарлы тапсырыс шеберге сәтті сақталды!');
     } catch (err) {
       console.error('Supabase assign appointment error:', err);
     }
   };
 
-  // WhatsApp-қа жіберу (Шұғыл)
   const sendToWhatsApp = (req: any) => {
     const assignedTech = techs.find(t => String(t.id) === String(req.tech_id));
     const techPhone = assignedTech ? assignedTech.phone || '' : '';
@@ -331,7 +328,6 @@ export default function AdminPage() {
     window.open(`https://api.whatsapp.com/send?phone=${techPhone}&text=${encodeURIComponent(text)}`, '_blank');
   };
 
-  // WhatsApp-қа жіберу (Жоспарлы)
   const sendAppointmentToWhatsApp = (app: any) => {
     const assignedTech = techs.find(t => String(t.id) === String(app.tech_id));
     const techPhone = assignedTech ? assignedTech.phone || '' : '';
@@ -411,7 +407,6 @@ export default function AdminPage() {
     <div className="min-h-screen bg-[#12131C] text-white p-4 md:p-8">
       <div className="max-w-7xl mx-auto">
         
-        {/* ЖОҒАРҒЫ МӘЗІР */}
         <div className="flex flex-col lg:flex-row justify-between items-center mb-8 bg-[#181926] p-6 rounded-3xl border border-slate-800 shadow-xl gap-4">
           <h1 className="text-xl font-extrabold text-amber-500">{t.title}</h1>
           
@@ -421,6 +416,10 @@ export default function AdminPage() {
               <button onClick={() => setLang('ru')} className={`px-3 py-1 text-xs font-black rounded-lg ${lang === 'ru' ? 'bg-amber-500 text-slate-950' : 'text-slate-400'}`}>РУС</button>
               <button onClick={() => setLang('en')} className={`px-3 py-1 text-xs font-black rounded-lg ${lang === 'en' ? 'bg-amber-500 text-slate-950' : 'text-slate-400'}`}>ENG</button>
             </div>
+            
+            <button onClick={fetchData} className="px-3.5 py-2 bg-amber-500/20 hover:bg-amber-500 text-amber-400 hover:text-slate-950 rounded-xl text-xs font-bold transition border border-amber-500/30">
+              {t.refresh}
+            </button>
             
             <button onClick={() => setActiveTab('requests')} className={`px-3.5 py-2 rounded-xl text-xs font-bold transition ${activeTab === 'requests' ? 'bg-amber-500 text-slate-950 shadow-lg' : 'bg-slate-800 text-slate-300'}`}>
               {t.requests} ({requests.length})
@@ -443,7 +442,6 @@ export default function AdminPage() {
           </div>
         </div>
 
-        {/* ШҰҒЫЛ ӨТІНІШТЕР БӨЛІМІ (REQUESTS) */}
         {activeTab === 'requests' && (
           <div className="bg-[#181926] rounded-3xl p-6 border border-slate-800 shadow-xl">
             <h2 className="text-xl font-extrabold mb-6 text-amber-500">{t.requests}</h2>
@@ -474,7 +472,6 @@ export default function AdminPage() {
                         <td className="p-4 text-slate-300 text-sm">{req.address} {req.note ? `(${req.note})` : ''}</td>
                         <td className="p-4 text-slate-500 text-xs">{req.date}</td>
                         
-                        {/* Мастердің статусы көрсетілетін жер (Жаңа статус батырмалары қосылды) */}
                         <td className="p-4 text-xs font-bold">
                           {req.status === 'completed' && <span className="text-green-400">Орындалды ✅</span>}
                           {req.status === 'returned' && <span className="text-red-400">Істей алмады ❌</span>}
@@ -523,7 +520,6 @@ export default function AdminPage() {
           </div>
         )}
 
-        {/* ЖОСПАРЛЫ ТАПСЫРЫСТАР БӨЛІМІ (APPOINTMENTS) */}
         {activeTab === 'appointments' && (
           <div className="bg-[#181926] rounded-3xl p-6 border border-slate-800 shadow-xl">
             <h2 className="text-xl font-extrabold mb-6 text-amber-500">{t.appointments}</h2>
@@ -554,7 +550,6 @@ export default function AdminPage() {
                         <td className="p-4 text-amber-300 font-semibold text-xs">{app.date_time || '-'}</td>
                         <td className="p-4 text-slate-300 text-sm">{app.note || '-'}</td>
                         
-                        {/* Жоспарлы тапсырыс статусы */}
                         <td className="p-4 text-xs font-bold">
                           {app.status === 'completed' && <span className="text-green-400">Орындалды ✅</span>}
                           {app.status === 'returned' && <span className="text-red-400">Істей алмады ❌</span>}
@@ -603,7 +598,6 @@ export default function AdminPage() {
           </div>
         )}
 
-        {/* ШЕБЕРЛЕР БӨЛІМІ */}
         {activeTab === 'techs' && (
           <div className="bg-[#181926] rounded-3xl p-6 border border-slate-800 shadow-xl">
             <h2 className="text-xl font-extrabold mb-6 text-amber-500">{t.techs}</h2>
@@ -656,7 +650,6 @@ export default function AdminPage() {
           </div>
         )}
 
-        {/* БАҒАЛАРДЫ АУЫСТЫРУ БӨЛІМІ */}
         {activeTab === 'prices' && (
           <div className="bg-[#181926] rounded-3xl p-6 border border-slate-800 shadow-xl max-w-xl">
             <h2 className="text-xl font-extrabold mb-6 text-amber-500">{t.pricesTitle}</h2>
@@ -691,7 +684,6 @@ export default function AdminPage() {
           </div>
         )}
 
-        {/* БАПТАУЛАР БӨЛІМІ */}
         {activeTab === 'settings' && (
           <div className="bg-[#181926] rounded-3xl p-6 border border-slate-800 shadow-xl max-w-xl">
             <h2 className="text-xl font-extrabold mb-6 text-amber-500">{t.settings}</h2>

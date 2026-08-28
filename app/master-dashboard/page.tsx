@@ -183,7 +183,6 @@ export default function MasterDashboard() {
 
       const masterIdStr = String(currentMaster.id).trim();
       const masterName = String(currentMaster.full_name || '').trim().toLowerCase();
-      // Түзетілген жер (zip: any)
       const masterZips = currentMaster.zip_codes ? currentMaster.zip_codes.split(',').map((zip: any) => String(zip).trim().toLowerCase()) : [];
 
       const processedRequests = (dbOrders || []).map(order => {
@@ -562,7 +561,6 @@ export default function MasterDashboard() {
               </div>
             ) : (
               <div className="space-y-4">
-                {/* Түзетілген жер (completedOrders.comap орнына completedOrders.map) */}
                 {completedOrders.map((order) => (
                   <div key={`comp-${order.sourceType}-${order.id}`} className="bg-[#12131C] p-5 rounded-2xl border border-slate-800">
                     <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">

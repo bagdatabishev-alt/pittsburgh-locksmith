@@ -25,14 +25,19 @@ const translations: Record<string, any> = {
     notSpecified: 'Көрсетілмеген',
     status: 'Статус:',
     logout: 'Шығу',
-    availableOrders: 'Маған бөлінген тапсырыстар (Orders)',
+    availableOrders: 'Маған бөлінген тапсырыстар',
+    completedOrdersTab: 'Орындалғандар мен пікірлер ⭐️',
     noOrders: 'Әзірге сізге бөлінген жаңа тапсырыстар жоқ.',
+    noCompletedOrders: 'Әзірге орындалған тапсырыстар мен пікірлер жоқ.',
     client: 'Клиент:',
     address: 'Мекенжай:',
     completeBtn: 'Орындалды ✅',
     cannotCompleteBtn: 'Істей алмадым ❌',
     helpBtn: 'Көмек керек 🆘',
     pauseBtn: 'Кідірту ⏸️',
+    reviewTitle: 'Клиенттің пікірі:',
+    whatsappMsg: (name: string, link: string) => 
+      `Сәлеметсіз бе, ${name || 'Клиент'}! Біздің шебер қызметін пайдаланғаныңызға рақмет. Тапсырысыңыз аяқталды. Өз пікіріңізді мына сілтеме арқылы қалдыра аласыз: ${link}`
   },
   rus: {
     title: 'Master Dashboard',
@@ -53,13 +58,18 @@ const translations: Record<string, any> = {
     status: 'Статус:',
     logout: 'Выйти',
     availableOrders: 'Назначенные мне заказы',
+    completedOrdersTab: 'Выполненные и отзывы ⭐️',
     noOrders: 'Пока нет назначенных вам заказов.',
+    noCompletedOrders: 'Пока нет выполненных заказов и отзывов.',
     client: 'Клиент:',
     address: 'Адрес:',
     completeBtn: 'Выполнено ✅',
     cannotCompleteBtn: 'Не смог ❌',
     helpBtn: 'Нужна помощь 🆘',
     pauseBtn: 'Пауза ⏸️',
+    reviewTitle: 'Отзыв клиента:',
+    whatsappMsg: (name: string, link: string) => 
+      `Здравствуйте, ${name || 'Клиент'}! Спасибо, что воспользовались услугами нашего мастера. Ваш заказ выполнен. Вы можете оставить свой отзыв по ссылке: ${link}`
   },
   eng: {
     title: 'Master Dashboard',
@@ -80,13 +90,18 @@ const translations: Record<string, any> = {
     status: 'Status:',
     logout: 'Logout',
     availableOrders: 'Assigned Orders',
+    completedOrdersTab: 'Completed & Reviews ⭐️',
     noOrders: 'No assigned orders yet.',
+    noCompletedOrders: 'No completed orders or reviews yet.',
     client: 'Client:',
     address: 'Address:',
     completeBtn: 'Completed ✅',
     cannotCompleteBtn: 'Cannot Do ❌',
     helpBtn: 'Need Help 🆘',
     pauseBtn: 'Pause ⏸️',
+    reviewTitle: 'Client Review:',
+    whatsappMsg: (name: string, link: string) => 
+      `Hello ${name || 'Client'}! Thank you for using our master's service. Your order has been completed. You can leave your review here: ${link}`
   },
 };
 
@@ -99,6 +114,8 @@ export default function MasterDashboard() {
   const [phone, setPhone] = useState('');
   const [masterData, setMasterData] = useState<any>(null);
   const [orders, setOrders] = useState<any[]>([]);
+  const [completedOrders, setCompletedOrders] = useState<any[]>([]);
+  const [activeTab, setActiveTab] = useState<'active' | 'completed'>('active');
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
 
@@ -147,42 +164,87 @@ export default function MasterDashboard() {
 
   const fetchMasterOrders = async (currentMaster: any) => {
     try {
-      const { data: dbOrders, error } = await supabase
+      const { data: dbOrders, error: ordersError } = await supabase
         .from('requests')
         .select('*')
         .order('created_at', { ascending: false });
 
-      if (error) {
-        console.error('Fetch orders error:', error);
-        return;
-      }
+      if (ordersError) console.error('Fetch requests error:', ordersError);
 
-      if (dbOrders) {
-        const masterIdStr = String(currentMaster.id);
-        const masterZips = currentMaster.zip_codes ? currentMaster.zip_codes.split(',').map((z: string) => z.trim()) : [];
+      const { data: dbAppointments, error: appointmentsError } = await supabase
+        .from('appointments')
+        .select('*');
 
-        const filtered = dbOrders.filter(order => {
-          const isAssignedToTech = String(order.tech_id) === masterIdStr;
-          const isMatchingZip = masterZips.includes(String(order.address));
-          
-          const orderStatus = order.status || 'pending';
-          const isActive = orderStatus !== 'completed' && orderStatus !== 'returned';
+      if (appointmentsError) console.error('Fetch appointments error:', appointmentsError);
 
-          return (isAssignedToTech || isMatchingZip) && isActive;
-        });
+      const { data: dbReviews } = await supabase
+        .from('reviews')
+        .select('*');
 
-        setOrders(filtered);
-      }
+      const masterIdStr = String(currentMaster.id).trim();
+      const masterName = String(currentMaster.full_name || '').trim().toLowerCase();
+      const masterZips = currentMaster.zip_codes ? currentMaster.zip_codes.split(',').map((z: string) => z.trim().toLowerCase()) : [];
+
+      const processedRequests = (dbOrders || []).map(order => {
+        const review = dbReviews?.find(r => String(r.order_id) === String(order.id));
+        return { ...order, sourceType: 'requests', review };
+      });
+
+      const processedAppointments = (dbAppointments || []).map(app => {
+        const review = dbReviews?.find(r => String(r.order_id) === String(app.id));
+        return { 
+          id: app.id,
+          name: app.name,
+          phone: app.phone,
+          service: app.service || app.service_type || 'Appointment Service',
+          address: app.address || app.note,
+          note: app.note,
+          created_at: app.date || app.created_at,
+          status: app.status || 'pending',
+          tech_id: app.tech_id,
+          sourceType: 'appointments',
+          review 
+        };
+      });
+
+      const allCombined = [...processedRequests, ...processedAppointments];
+
+      const isForThisMaster = (item: any) => {
+        const techIdStr = String(item.tech_id || '').trim();
+        const itemAddress = String(item.address || item.note || '').trim().toLowerCase();
+
+        // Админ панельден берілген ID дәл сәйкес келуін тексереміз
+        const isAssigned = techIdStr === masterIdStr || 
+                           techIdStr.toLowerCase() === masterName;
+
+        const isMatchingZip = masterZips.some(zip => itemAddress.includes(zip));
+
+        return isAssigned || (!item.tech_id && isMatchingZip);
+      };
+
+      const activeList = allCombined.filter(item => {
+        const st = (item.status || 'pending').toLowerCase();
+        return isForThisMaster(item) && st !== 'completed' && st !== 'returned';
+      });
+
+      const completedList = allCombined.filter(item => {
+        const st = (item.status || 'pending').toLowerCase();
+        return isForThisMaster(item) && (st === 'completed' || item.review);
+      });
+
+      setOrders(activeList);
+      setCompletedOrders(completedList);
+
     } catch (err) {
       console.error('Error fetching orders:', err);
     }
   };
 
-  // Заказ статусын жаңарту (Орындалды, Бас тарту, Көмек сұрау немесе Кідірту)[cite: 1]
-  const handleUpdateOrderStatus = async (orderId: number, newStatus: string) => {
+  const handleUpdateOrderStatus = async (orderId: number | string, newStatus: string, sourceType: string = 'requests') => {
     try {
+      const tableName = sourceType === 'appointments' ? 'appointments' : 'requests';
       const { error } = await supabase
-        .from('requests')
+        .from(tableName)
         .update({ status: newStatus })
         .eq('id', orderId);
 
@@ -198,12 +260,44 @@ export default function MasterDashboard() {
     }
   };
 
+  const handleCompleteOrder = async (order: any) => {
+    try {
+      const tableName = order.sourceType === 'appointments' ? 'appointments' : 'requests';
+      const { error: updateError } = await supabase
+        .from(tableName)
+        .update({ status: 'completed' })
+        .eq('id', order.id);
+
+      if (updateError) {
+        console.error('Error updating status:', updateError);
+        alert('Статусты жаңарту кезінде қате шықты');
+        return;
+      }
+
+      const clientPhone = order.phone ? order.phone.replace(/[^0-9]/g, '') : '';
+      const reviewLink = `${window.location.origin}/review?order_id=${order.id}`;
+      const messageText = t.whatsappMsg(order.name, reviewLink);
+
+      if (clientPhone) {
+        const whatsappUrl = `https://wa.me/${clientPhone}?text=${encodeURIComponent(messageText)}`;
+        window.open(whatsappUrl, '_blank');
+      } else {
+        alert('⚠️ Клиенттің телефон нөмірі қате немесе көрсетілмеген.');
+      }
+
+      fetchMasterOrders(masterData);
+    } catch (err) {
+      console.error('Complete order error:', err);
+    }
+  };
+
   const handleLogout = () => {
     setIsAuthenticated(false);
     setMasterData(null);
     setEmail('');
     setPhone('');
     setOrders([]);
+    setCompletedOrders([]);
   };
 
   if (!isAuthenticated) {
@@ -262,7 +356,7 @@ export default function MasterDashboard() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-gradient-to-r from-amber-500 to-orange-500 text-slate-950 font-black py-3.5 rounded-xl transition shadow-lg mt-2 text-sm"
+              className="w-full bg-gradient-to-r from-amber-500 to-orange-500 text-slate-950 font-black py-3.5 rounded-xl transition shadow-lg mt-2 text-sm cursor-pointer"
             >
               {loading ? t.checking : t.loginBtn}
             </button>
@@ -279,7 +373,7 @@ export default function MasterDashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-[#12131C] text-white p-4 md:p-8">
+    <div className="min-h-screen bg-[#12131C] text-white p-4 md:p-8 relative">
       <div className="max-w-5xl mx-auto">
         
         <div className="flex flex-col md:flex-row justify-between items-center mb-8 bg-[#181926] p-6 rounded-3xl border border-slate-800 shadow-xl gap-4">
@@ -315,16 +409,41 @@ export default function MasterDashboard() {
             </a>
             <button
               onClick={handleLogout}
-              className="px-4 py-2 bg-red-600/20 hover:bg-red-600 text-red-400 hover:text-white rounded-xl text-xs font-bold transition border border-red-600/30"
+              className="px-4 py-2 bg-red-600/20 hover:bg-red-600 text-red-400 hover:text-white rounded-xl text-xs font-bold transition border border-red-600/30 cursor-pointer"
             >
               {t.logout}
             </button>
           </div>
         </div>
 
+        <div className="flex gap-3 mb-6">
+          <button
+            onClick={() => setActiveTab('active')}
+            className={`px-5 py-3 rounded-2xl text-xs font-black transition cursor-pointer ${
+              activeTab === 'active'
+                ? 'bg-amber-500 text-slate-950 shadow-lg'
+                : 'bg-[#181926] text-slate-400 hover:text-white border border-slate-800'
+            }`}
+          >
+            {t.availableOrders} ({orders.length})
+          </button>
+          <button
+            onClick={() => setActiveTab('completed')}
+            className={`px-5 py-3 rounded-2xl text-xs font-black transition cursor-pointer ${
+              activeTab === 'completed'
+                ? 'bg-amber-500 text-slate-950 shadow-lg'
+                : 'bg-[#181926] text-slate-400 hover:text-white border border-slate-800'
+            }`}
+          >
+            {t.completedOrdersTab} ({completedOrders.length})
+          </button>
+        </div>
+
         <div className="bg-[#181926] rounded-3xl p-6 border border-slate-800 shadow-xl">
           <div className="flex justify-between items-center mb-6">
-            <h2 className="text-xl font-extrabold text-amber-500">{t.availableOrders}</h2>
+            <h2 className="text-xl font-extrabold text-amber-500">
+              {activeTab === 'active' ? t.availableOrders : t.completedOrdersTab}
+            </h2>
             <button 
               onClick={() => fetchMasterOrders(masterData)}
               className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 rounded-lg text-xs font-bold text-slate-300 transition flex items-center gap-2 cursor-pointer"
@@ -333,77 +452,156 @@ export default function MasterDashboard() {
             </button>
           </div>
 
-          {orders.length === 0 ? (
-            <div className="text-center p-12 text-slate-500 italic">
-              {t.noOrders}
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {orders.map((order) => (
-                <div key={order.id} className="bg-[#12131C] p-5 rounded-2xl border border-slate-800 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                  <div>
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="bg-amber-500/20 text-amber-400 text-xs font-black px-2.5 py-1 rounded-lg border border-amber-500/30">
-                        {order.service || 'Locksmith Service'}
-                      </span>
-                      <span className="text-slate-500 text-xs">
-                        {order.created_at ? new Date(order.created_at).toLocaleString() : ''}
-                      </span>
-                      {order.status === 'help_requested' && (
-                        <span className="bg-orange-500/20 text-orange-400 text-xs font-bold px-2 py-0.5 rounded border border-orange-500/30">
-                          🆘 Көмек сұралды
+          {activeTab === 'active' ? (
+            orders.length === 0 ? (
+              <div className="text-center p-12 text-slate-500 italic">
+                {t.noOrders}
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {orders.map((order) => (
+                  <div key={`${order.sourceType || 'req'}-${order.id}`} className="bg-[#12131C] p-5 rounded-2xl border border-slate-800 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                    
+                    <div className="w-full md:w-3/5">
+                      <div className="flex items-center gap-2 mb-1 flex-wrap">
+                        <span className="bg-amber-500/20 text-amber-400 text-xs font-black px-2.5 py-1 rounded-lg border border-amber-500/30">
+                          {order.service || 'Locksmith Service'}
                         </span>
-                      )}
-                      {order.status === 'paused' && (
-                        <span className="bg-purple-500/20 text-purple-400 text-xs font-bold px-2 py-0.5 rounded border border-purple-500/30">
-                          ⏸️ Кідіртілді
+                        {order.sourceType === 'appointments' && (
+                          <span className="bg-blue-500/20 text-blue-300 text-xs font-bold px-2 py-0.5 rounded border border-blue-500/30">
+                            📅 Жоспарлы
+                          </span>
+                        )}
+                        <span className="text-slate-500 text-xs">
+                          {order.created_at ? new Date(order.created_at).toLocaleString() : ''}
                         </span>
+                      </div>
+
+                      <h3 className="text-base font-bold text-white mt-1">{t.client} {order.name || 'Аты көрсетілмеген'}</h3>
+                      <p className="text-slate-300 text-sm mt-0.5">{t.address} <span className="text-amber-300 font-semibold">{order.address}</span></p>
+
+                      {['completed', 'help_requested', 'paused', 'returned'].includes(order.status) && (
+                        <div className="mt-3 flex items-center gap-2">
+                          <span className="text-xs text-slate-400 font-bold">Таңдалған статус:</span>
+                          {order.status === 'completed' && (
+                            <span className="bg-blue-600 text-white text-xs font-bold px-3 py-1.5 rounded-xl border border-blue-400 shadow-lg flex items-center gap-1.5">
+                              {t.completeBtn}
+                            </span>
+                          )}
+                          {order.status === 'help_requested' && (
+                            <span className="bg-orange-600 text-white text-xs font-bold px-3 py-1.5 rounded-xl border border-orange-400 shadow-lg flex items-center gap-1.5">
+                              {t.helpBtn}
+                            </span>
+                          )}
+                          {order.status === 'paused' && (
+                            <span className="bg-purple-600 text-white text-xs font-bold px-3 py-1.5 rounded-xl border border-purple-400 shadow-lg flex items-center gap-1.5">
+                              {t.pauseBtn}
+                            </span>
+                          )}
+                          {order.status === 'returned' && (
+                            <span className="bg-red-600 text-white text-xs font-bold px-3 py-1.5 rounded-xl border border-red-400 shadow-lg flex items-center gap-1.5">
+                              {t.cannotCompleteBtn}
+                            </span>
+                          )}
+                        </div>
                       )}
                     </div>
-                    <h3 className="text-base font-bold text-white mt-1">{t.client} {order.name}</h3>
-                    <p className="text-slate-300 text-sm mt-0.5">{t.address} <span className="text-amber-300 font-semibold">{order.address}</span> {order.note ? `(${order.note})` : ''}</p>
-                  </div>
-                  
-                  {/* Батырмалар: Қоңырау, Орындалды, Бас тарту, Көмек сұрау, Кідірту */}
-                  <div className="flex flex-wrap items-center gap-2 w-full md:w-auto justify-end">
-                    <a
-                      href={`tel:${order.phone}`}
-                      className="bg-emerald-500/20 hover:bg-emerald-600 text-emerald-400 hover:text-white px-3 py-2 rounded-xl text-xs font-bold transition border border-emerald-500/30 text-center"
-                    >
-                      📞 {order.phone}
-                    </a>
                     
-                    <button
-                      onClick={() => handleUpdateOrderStatus(order.id, 'completed')}
-                      className="bg-blue-600/20 hover:bg-blue-600 text-blue-400 hover:text-white px-3 py-2 rounded-xl text-xs font-bold transition border border-blue-600/30 cursor-pointer"
-                    >
-                      {t.completeBtn}
-                    </button>
+                    <div className="flex flex-wrap items-center gap-2 w-full md:w-auto justify-end">
+                      <a
+                        href={`tel:${order.phone}`}
+                        className="bg-emerald-500/20 hover:bg-emerald-600 text-emerald-400 hover:text-white px-3 py-2 rounded-xl text-xs font-bold transition border border-emerald-500/30 text-center"
+                      >
+                        📞 {order.phone || 'Телефон жоқ'}
+                      </a>
+                      
+                      {order.status !== 'completed' && (
+                        <button
+                          onClick={() => handleCompleteOrder(order)}
+                          className="bg-blue-600/20 hover:bg-blue-600 text-blue-400 hover:text-white px-3 py-2 rounded-xl text-xs font-bold transition border border-blue-600/30 cursor-pointer"
+                        >
+                          {t.completeBtn}
+                        </button>
+                      )}
 
-                    <button
-                      onClick={() => handleUpdateOrderStatus(order.id, 'help_requested')}
-                      className="bg-orange-600/20 hover:bg-orange-600 text-orange-400 hover:text-white px-3 py-2 rounded-xl text-xs font-bold transition border border-orange-600/30 cursor-pointer"
-                    >
-                      {t.helpBtn}
-                    </button>
+                      {order.status !== 'help_requested' && (
+                        <button
+                          onClick={() => handleUpdateOrderStatus(order.id, 'help_requested', order.sourceType)}
+                          className="bg-orange-600/20 hover:bg-orange-600 text-orange-400 hover:text-white px-3 py-2 rounded-xl text-xs font-bold transition border border-orange-600/30 cursor-pointer"
+                        >
+                          {t.helpBtn}
+                        </button>
+                      )}
 
-                    <button
-                      onClick={() => handleUpdateOrderStatus(order.id, 'paused')}
-                      className="bg-purple-600/20 hover:bg-purple-600 text-purple-400 hover:text-white px-3 py-2 rounded-xl text-xs font-bold transition border border-purple-600/30 cursor-pointer"
-                    >
-                      {t.pauseBtn}
-                    </button>
+                      {order.status !== 'paused' && (
+                        <button
+                          onClick={() => handleUpdateOrderStatus(order.id, 'paused', order.sourceType)}
+                          className="bg-purple-600/20 hover:bg-purple-600 text-purple-400 hover:text-white px-3 py-2 rounded-xl text-xs font-bold transition border border-purple-600/30 cursor-pointer"
+                        >
+                          {t.pauseBtn}
+                        </button>
+                      )}
 
-                    <button
-                      onClick={() => handleUpdateOrderStatus(order.id, 'returned')}
-                      className="bg-red-600/20 hover:bg-red-600 text-red-400 hover:text-white px-3 py-2 rounded-xl text-xs font-bold transition border border-red-600/30 cursor-pointer"
-                    >
-                      {t.cannotCompleteBtn}
-                    </button>
+                      {order.status !== 'returned' && (
+                        <button
+                          onClick={() => handleUpdateOrderStatus(order.id, 'returned', order.sourceType)}
+                          className="bg-red-600/20 hover:bg-red-600 text-red-400 hover:text-white px-3 py-2 rounded-xl text-xs font-bold transition border border-red-600/30 cursor-pointer"
+                        >
+                          {t.cannotCompleteBtn}
+                        </button>
+                      )}
+                    </div>
                   </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )
+          ) : (
+            completedOrders.length === 0 ? (
+              <div className="text-center p-12 text-slate-500 italic">
+                {t.noCompletedOrders}
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {completedOrders.comap?.map?.((order: any) => null) || completedOrders.map((order) => (
+                  <div key={`comp-${order.sourceType}-${order.id}`} className="bg-[#12131C] p-5 rounded-2xl border border-slate-800">
+                    <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                      <div>
+                        <div className="flex items-center gap-2 mb-1 flex-wrap">
+                          <span className="bg-emerald-500/20 text-emerald-400 text-xs font-black px-2.5 py-1 rounded-lg border border-emerald-500/30">
+                            Орындалды ✅
+                          </span>
+                          <span className="bg-amber-500/20 text-amber-400 text-xs font-black px-2.5 py-1 rounded-lg border border-amber-500/30">
+                            {order.service || 'Locksmith Service'}
+                          </span>
+                        </div>
+                        <h3 className="text-base font-bold text-white mt-1">{t.client} {order.name || 'Аты көрсетілмеген'} -</h3>
+                        <p className="text-slate-300 text-sm mt-0.5">{t.address} <span className="text-amber-300 font-semibold">{order.address}</span></p>
+                      </div>
+
+                      <div className="text-right">
+                        <span className="text-slate-500 text-xs">
+                          {order.created_at ? new Date(order.created_at).toLocaleString() : ''}
+                        </span>
+                      </div>
+                    </div>
+
+                    {order.review ? (
+                      <div className="mt-4 p-4 bg-amber-500/10 border border-amber-500/20 rounded-xl">
+                        <div className="flex items-center gap-2 text-sm font-bold text-amber-400 mb-1">
+                          <span>{t.reviewTitle}</span>
+                          <span>{'⭐'.repeat(order.review.rating)}</span>
+                        </div>
+                        <p className="text-slate-200 text-sm italic">"{order.review.comment}"</p>
+                      </div>
+                    ) : (
+                      <div className="mt-3 text-xs text-slate-500 italic">
+                        Әзірге бұл тапсырысқа пікір жазылмаған.
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )
           )}
         </div>
 

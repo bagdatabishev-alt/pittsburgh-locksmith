@@ -41,12 +41,13 @@ const DICT = {
     assign: 'Жіберу',
     whatsapp: 'WhatsApp 📲',
     selectTech: 'Шеберді таңдаңыз',
-    statusHeader: 'Статус (Мастер жауабы)'
+    statusHeader: 'Статус (Мастер жауабы)',
+    reviewsTitle: 'Пікірлер мен Рейтинг'
   },
   ru: {
     title: 'Панель управления сайтом',
     requests: 'Шұғыл өтініштер (Requests)',
-    appointments: 'Жоспарлы тапсырыстар (Appointments)',
+    appointments: 'Запланированные заявки (Appointments)',
     techs: 'Мастера',
     prices: 'Цены',
     settings: 'Настройки',
@@ -81,7 +82,8 @@ const DICT = {
     assign: 'Назначить',
     whatsapp: 'WhatsApp 📲',
     selectTech: 'Выберите мастера',
-    statusHeader: 'Статус (Ответ мастера)'
+    statusHeader: 'Status (Ответ мастера)',
+    reviewsTitle: 'Отзывы и Рейтинг'
   },
   en: {
     title: 'Site Control Panel',
@@ -121,7 +123,8 @@ const DICT = {
     assign: 'Assign',
     whatsapp: 'WhatsApp 📲',
     selectTech: 'Select Tech',
-    statusHeader: 'Status (Tech Reply)'
+    statusHeader: 'Status (Tech Reply)',
+    reviewsTitle: 'Reviews & Ratings'
   }
 };
 
@@ -136,6 +139,7 @@ export default function AdminPage() {
   const [requests, setRequests] = useState<any[]>([]);
   const [appointments, setAppointments] = useState<any[]>([]);
   const [techs, setTechs] = useState<any[]>([]);
+  const [reviews, setReviews] = useState<any[]>([]);
   const [activeTab, setActiveTab] = useState<'requests' | 'appointments' | 'techs' | 'prices' | 'settings'>('requests');
   const [savedMsg, setSavedMsg] = useState('');
 
@@ -164,18 +168,6 @@ export default function AdminPage() {
   }, []);
 
   const fetchData = async () => {
-    const loadedRequests = JSON.parse(localStorage.getItem('site_requests') || '[]');
-    const loadedAppointments = JSON.parse(localStorage.getItem('site_appointments') || '[]');
-    const loadedPrices = JSON.parse(localStorage.getItem('site_prices') || '{}');
-    const loadedPhone = localStorage.getItem('site_phone');
-    const loadedEmergency = localStorage.getItem('site_emergency');
-
-    if (loadedRequests.length > 0) setRequests(loadedRequests);
-    if (loadedAppointments.length > 0) setAppointments(loadedAppointments);
-    if (Object.keys(loadedPrices).length > 0) setPrices(prev => ({ ...prev, ...loadedPrices }));
-    if (loadedPhone) setPhone(loadedPhone);
-    if (loadedEmergency !== null) setEmergencyEnabled(loadedEmergency === 'true');
-
     try {
       const { data: dbOrders, error: ordersError } = await supabase.from('requests').select('*').order('created_at', { ascending: false });
       if (!ordersError && dbOrders) {
@@ -191,7 +183,6 @@ export default function AdminPage() {
           date: o.created_at ? new Date(o.created_at).toLocaleString() : new Date().toLocaleString()
         }));
         setRequests(formatted);
-        localStorage.setItem('site_requests', JSON.stringify(formatted));
       }
 
       const { data: dbAppointments, error: appError } = await supabase.from('appointments').select('*').order('created_at', { ascending: false });
@@ -207,12 +198,16 @@ export default function AdminPage() {
           status: a.status || 'pending'
         }));
         setAppointments(formattedApp);
-        localStorage.setItem('site_appointments', JSON.stringify(formattedApp));
       }
 
       const { data: dbTechs } = await supabase.from('techs').select('*').order('created_at', { ascending: false });
       if (dbTechs) {
         setTechs(dbTechs);
+      }
+
+      const { data: dbReviews, error: revError } = await supabase.from('reviews').select('*').order('created_at', { ascending: false });
+      if (!revError && dbReviews) {
+        setReviews(dbReviews);
       }
 
       const { data: dbServices } = await supabase.from('services').select('*');
@@ -263,9 +258,7 @@ export default function AdminPage() {
 
   const handleDeleteRequest = async (id: number | string) => {
     if (confirm('Бұл тапсырысты өшіргіңіз келе ме?')) {
-      const updated = requests.filter(r => r.id !== id);
-      setRequests(updated);
-      localStorage.setItem('site_requests', JSON.stringify(updated));
+      setRequests(requests.filter(r => r.id !== id));
       try {
         await supabase.from('requests').delete().eq('id', id);
       } catch (err) {
@@ -276,9 +269,7 @@ export default function AdminPage() {
 
   const handleDeleteAppointment = async (id: number | string) => {
     if (confirm('Бұл жоспарлы тапсырысты өшіргіңіз келе ме?')) {
-      const updated = appointments.filter(a => a.id !== id);
-      setAppointments(updated);
-      localStorage.setItem('site_appointments', JSON.stringify(updated));
+      setAppointments(appointments.filter(a => a.id !== id));
       try {
         await supabase.from('appointments').delete().eq('id', id);
       } catch (err) {
@@ -287,37 +278,43 @@ export default function AdminPage() {
     }
   };
 
-  // МҰНДА СТАТУСҚА 'pending' ҚОСЫЛДЫ
   const handleAssignOrder = async (orderId: number | string, techId: string) => {
     if (!techId) {
       alert('⚠️ Алдымен шеберді таңдаңыз!');
       return;
     }
-    const updated = requests.map(r => r.id === orderId ? { ...r, tech_id: techId, status: 'pending' } : r);
-    setRequests(updated);
-    localStorage.setItem('site_requests', JSON.stringify(updated));
+    setRequests(requests.map(r => r.id === orderId ? { ...r, tech_id: techId, status: 'pending' } : r));
     try {
-      await supabase.from('requests').update({ tech_id: techId, status: 'pending' }).eq('id', orderId);
-      alert('✅ Тапсырыс шеберге сәтті сақталды!');
+      const { error } = await supabase.from('requests').update({ tech_id: techId, status: 'pending' }).eq('id', orderId);
+      if (error) {
+        alert('❌ Қате: ' + error.message);
+      } else {
+        alert('✅ Тапсырыс шеберге сәтті сақталды!');
+        fetchData();
+      }
     } catch (err) {
       console.error('Supabase assign order error:', err);
     }
   };
 
-  // МҰНДА ДА СТАТУСҚА 'pending' ҚОСЫЛДЫ
+  // Түзетілген функция: `tech_id` мен `status` мәндерін бірге базаға жазады
   const handleAssignAppointment = async (appId: number | string, techId: string) => {
     if (!techId) {
       alert('⚠️ Алдымен шеберді таңдаңыз!');
       return;
     }
-    const updated = appointments.map(a => a.id === appId ? { ...a, tech_id: techId, status: 'pending' } : a);
-    setAppointments(updated);
-    localStorage.setItem('site_appointments', JSON.stringify(updated));
+    setAppointments(appointments.map(a => a.id === appId ? { ...a, tech_id: techId, status: 'pending' } : a));
     try {
-      await supabase.from('appointments').update({ tech_id: techId, status: 'pending' }).eq('id', appId);
-      alert('✅ Жоспарлы тапсырыс шеберге сәтті сақталды!');
+      const { error } = await supabase.from('appointments').update({ tech_id: techId, status: 'pending' }).eq('id', appId);
+      if (error) {
+        alert('❌ Қате: ' + error.message);
+      } else {
+        alert('✅ Жоспарлы тапсырыс шеберге сәтті сақталды!');
+        fetchData();
+      }
     } catch (err) {
       console.error('Supabase assign appointment error:', err);
+      alert('❌ Қате кетті!');
     }
   };
 
@@ -337,8 +334,7 @@ export default function AdminPage() {
 
   const handleDeleteTech = async (id: number | string) => {
     if (confirm('Бұл шеберді өшіргіңіз келе ме?')) {
-      const updated = techs.filter(t => t.id !== id);
-      setTechs(updated);
+      setTechs(techs.filter(t => t.id !== id));
       try {
         await supabase.from('techs').delete().eq('id', id);
       } catch (err) {
@@ -348,8 +344,7 @@ export default function AdminPage() {
   };
 
   const handleStatusChange = async (id: number | string, newStatus: string) => {
-    const updated = techs.map(t => t.id === id ? { ...t, subscription_status: newStatus } : t);
-    setTechs(updated);
+    setTechs(techs.map(t => t.id === id ? { ...t, subscription_status: newStatus } : t));
     try {
       await supabase.from('techs').update({ subscription_status: newStatus }).eq('id', id);
     } catch (err) {
@@ -358,7 +353,6 @@ export default function AdminPage() {
   };
 
   const handleSavePrices = async () => {
-    localStorage.setItem('site_prices', JSON.stringify(prices));
     try {
       const updates = Object.entries(prices).map(([id, price]) => ({
         id: Number(id),
@@ -373,8 +367,6 @@ export default function AdminPage() {
   };
 
   const handleSaveSettings = async () => {
-    localStorage.setItem('site_phone', phone);
-    localStorage.setItem('site_emergency', String(emergencyEnabled));
     try {
       await supabase.from('settings').upsert([{ id: 1, phone, emergency_enabled: emergencyEnabled }]);
     } catch (err) {
@@ -464,55 +456,77 @@ export default function AdminPage() {
                       <td colSpan={7} className="text-center p-8 text-slate-500 italic">{t.noReq}</td>
                     </tr>
                   ) : (
-                    requests.map((req) => (
-                      <tr key={req.id} className="hover:bg-slate-800/40 transition">
-                        <td className="p-4 font-bold">{req.name || '-'}</td>
-                        <td className="p-4 text-amber-400 font-bold">{req.phone || '-'}</td>
-                        <td className="p-4 text-sm">{req.service || '-'}</td>
-                        <td className="p-4 text-slate-300 text-sm">{req.address} {req.note ? `(${req.note})` : ''}</td>
-                        <td className="p-4 text-slate-500 text-xs">{req.date}</td>
-                        
-                        <td className="p-4 text-xs font-bold">
-                          {req.status === 'completed' && <span className="text-green-400">Орындалды ✅</span>}
-                          {req.status === 'returned' && <span className="text-red-400">Істей алмады ❌</span>}
-                          {req.status === 'help_requested' && <span className="text-orange-400">Көмек сұралды 🆘</span>}
-                          {req.status === 'paused' && <span className="text-purple-400">Кідіртілді ⏸️</span>}
-                          {(!req.status || req.status === 'pending') && <span className="text-amber-400">Күтуде ⏳</span>}
-                        </td>
+                    requests.map((req, index) => {
+                      const matchedReview = reviews.find(rev => {
+                        if (!rev.order_id) return false;
+                        const cleanRevId = String(rev.order_id).trim();
+                        const cleanReqId = String(req.id).trim();
+                        return cleanRevId === cleanReqId || 
+                               cleanRevId === String(index + 1) || 
+                               cleanRevId === String(requests.length - index);
+                      });
+                      return (
+                        <tr key={req.id} className="hover:bg-slate-800/40 transition">
+                          <td className="p-4 font-bold">{req.name || '-'}</td>
+                          <td className="p-4 text-amber-400 font-bold">{req.phone || '-'}</td>
+                          <td className="p-4 text-sm">{req.service || '-'}</td>
+                          <td className="p-4 text-slate-300 text-sm">{req.address} {req.note ? `(${req.note})` : ''}</td>
+                          <td className="p-4 text-slate-500 text-xs">{req.date}</td>
+                          
+                          <td className="p-4 text-xs font-bold">
+                            {req.status === 'completed' && (
+                              <div className="space-y-1">
+                                <span className="text-green-400 block">Орындалды ✅</span>
+                                {matchedReview ? (
+                                  <div className="bg-slate-900/80 p-2.5 rounded-xl border border-slate-800 text-[11px] font-normal mt-1">
+                                    <div className="text-amber-400 font-bold text-sm">{'⭐'.repeat(Number(matchedReview.rating || 5))}</div>
+                                    <div className="text-slate-200 italic mt-0.5">"{matchedReview.comment || ''}"</div>
+                                  </div>
+                                ) : (
+                                  <div className="text-slate-500 text-[10px] italic">Пікір әлі жазылмаған</div>
+                                )}
+                              </div>
+                            )}
+                            {req.status === 'returned' && <span className="text-red-400">Істей алмады ❌</span>}
+                            {req.status === 'help_requested' && <span className="text-orange-400">Көмек сұралды 🆘</span>}
+                            {req.status === 'paused' && <span className="text-purple-400">Кідіртілді ⏸️</span>}
+                            {(!req.status || req.status === 'pending') && <span className="text-amber-400">Күтуде ⏳</span>}
+                          </td>
 
-                        <td className="p-4 text-center">
-                          <div className="flex items-center justify-center gap-2 flex-wrap">
-                            <select 
-                              value={req.tech_id || ''} 
-                              onChange={(e) => {
-                                const val = e.target.value;
-                                setRequests(requests.map(r => r.id === req.id ? { ...r, tech_id: val } : r));
-                              }}
-                              className="bg-[#12131C] border border-slate-700 text-amber-400 font-bold px-2.5 py-1.5 rounded-lg text-xs focus:outline-none focus:border-amber-500 cursor-pointer"
-                            >
-                              <option value="">-- {t.selectTech} --</option>
-                              {techs.map(tech => (
-                                <option key={tech.id} value={tech.id}>
-                                  {tech.full_name || tech.email || 'Мастер #' + tech.id}
-                                </option>
-                              ))}
-                            </select>
+                          <td className="p-4 text-center">
+                            <div className="flex items-center justify-center gap-2 flex-wrap">
+                              <select 
+                                value={req.tech_id || ''} 
+                                onChange={(e) => {
+                                  const val = e.target.value;
+                                  setRequests(requests.map(r => r.id === req.id ? { ...r, tech_id: val } : r));
+                                }}
+                                className="bg-[#12131C] border border-slate-700 text-amber-400 font-bold px-2.5 py-1.5 rounded-lg text-xs focus:outline-none focus:border-amber-500 cursor-pointer"
+                              >
+                                <option value="">-- {t.selectTech} --</option>
+                                {techs.map(tech => (
+                                  <option key={tech.id} value={tech.id}>
+                                    {tech.full_name || tech.email || 'Мастер #' + tech.id}
+                                  </option>
+                                ))}
+                              </select>
 
-                            <button onClick={() => handleAssignOrder(req.id, req.tech_id)} className="bg-amber-500 hover:bg-amber-400 text-slate-950 px-3 py-1.5 rounded-lg text-xs font-black transition shadow">
-                              {t.assign}
-                            </button>
+                              <button onClick={() => handleAssignOrder(req.id, req.tech_id)} className="bg-amber-500 hover:bg-amber-400 text-slate-950 px-3 py-1.5 rounded-lg text-xs font-black transition shadow">
+                                {t.assign}
+                              </button>
 
-                            <button onClick={() => sendToWhatsApp(req)} className="bg-[#25D366] hover:bg-[#20ba5a] text-white px-3 py-1.5 rounded-lg text-xs font-bold transition shadow">
-                              {t.whatsapp}
-                            </button>
+                              <button onClick={() => sendToWhatsApp(req)} className="bg-[#25D366] hover:bg-[#20ba5a] text-white px-3 py-1.5 rounded-lg text-xs font-bold transition shadow">
+                                {t.whatsapp}
+                              </button>
 
-                            <button onClick={() => handleDeleteRequest(req.id)} className="bg-red-500/20 hover:bg-red-600 text-red-400 hover:text-white px-3 py-1.5 rounded-lg text-xs font-bold transition border border-red-500/30">
-                              {t.delete}
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))
+                              <button onClick={() => handleDeleteRequest(req.id)} className="bg-red-500/20 hover:bg-red-600 text-red-400 hover:text-white px-3 py-1.5 rounded-lg text-xs font-bold transition border border-red-500/30">
+                                {t.delete}
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })
                   )}
                 </tbody>
               </table>
@@ -542,55 +556,76 @@ export default function AdminPage() {
                       <td colSpan={7} className="text-center p-8 text-slate-500 italic">{t.noApp}</td>
                     </tr>
                   ) : (
-                    appointments.map((app) => (
-                      <tr key={app.id} className="hover:bg-slate-800/40 transition">
-                        <td className="p-4 font-bold">{app.name || '-'}</td>
-                        <td className="p-4 text-amber-400 font-bold">{app.phone || '-'}</td>
-                        <td className="p-4 text-sm">{app.service || '-'}</td>
-                        <td className="p-4 text-amber-300 font-semibold text-xs">{app.date_time || '-'}</td>
-                        <td className="p-4 text-slate-300 text-sm">{app.note || '-'}</td>
-                        
-                        <td className="p-4 text-xs font-bold">
-                          {app.status === 'completed' && <span className="text-green-400">Орындалды ✅</span>}
-                          {app.status === 'returned' && <span className="text-red-400">Істей алмады ❌</span>}
-                          {app.status === 'help_requested' && <span className="text-orange-400">Көмек сұралды 🆘</span>}
-                          {app.status === 'paused' && <span className="text-purple-400">Кідіртілді ⏸️</span>}
-                          {(!app.status || app.status === 'pending') && <span className="text-amber-400">Күтуде ⏳</span>}
-                        </td>
+                    appointments.map((app, index) => {
+                      const matchedReview = reviews.find(rev => {
+                        if (!rev.order_id) return false;
+                        const cleanRevId = String(rev.order_id).trim();
+                        const cleanAppId = String(app.id).trim();
+                        return cleanRevId === cleanAppId || 
+                               cleanRevId === String(index + 1);
+                      });
+                      return (
+                        <tr key={app.id} className="hover:bg-slate-800/40 transition">
+                          <td className="p-4 font-bold">{app.name || '-'}</td>
+                          <td className="p-4 text-amber-400 font-bold">{app.phone || '-'}</td>
+                          <td className="p-4 text-sm">{app.service || '-'}</td>
+                          <td className="p-4 text-amber-300 font-semibold text-xs">{app.date_time || '-'}</td>
+                          <td className="p-4 text-slate-300 text-sm">{app.note || '-'}</td>
+                          
+                          <td className="p-4 text-xs font-bold">
+                            {app.status === 'completed' && (
+                              <div className="space-y-1">
+                                <span className="text-green-400 block">Орындалды ✅</span>
+                                {matchedReview ? (
+                                  <div className="bg-slate-900/80 p-2.5 rounded-xl border border-slate-800 text-[11px] font-normal mt-1">
+                                    <div className="text-amber-400 font-bold text-sm">{'⭐'.repeat(Number(matchedReview.rating || 5))}</div>
+                                    <div className="text-slate-200 italic mt-0.5">"{matchedReview.comment || ''}"</div>
+                                  </div>
+                                ) : (
+                                  <div className="text-slate-500 text-[10px] italic">Пікір әлі жазылмаған</div>
+                                )}
+                              </div>
+                            )}
+                            {app.status === 'returned' && <span className="text-red-400">Істей алмады ❌</span>}
+                            {app.status === 'help_requested' && <span className="text-orange-400">Көмек сұралды 🆘</span>}
+                            {app.status === 'paused' && <span className="text-purple-400">Кідіртілді ⏸️</span>}
+                            {(!app.status || app.status === 'pending') && <span className="text-amber-400">Күтуде ⏳</span>}
+                          </td>
 
-                        <td className="p-4 text-center">
-                          <div className="flex items-center justify-center gap-2 flex-wrap">
-                            <select 
-                              value={app.tech_id || ''} 
-                              onChange={(e) => {
-                                const val = e.target.value;
-                                setAppointments(appointments.map(a => a.id === app.id ? { ...a, tech_id: val } : a));
-                              }}
-                              className="bg-[#12131C] border border-slate-700 text-amber-400 font-bold px-2.5 py-1.5 rounded-lg text-xs focus:outline-none focus:border-amber-500 cursor-pointer"
-                            >
-                              <option value="">-- {t.selectTech} --</option>
-                              {techs.map(tech => (
-                                <option key={tech.id} value={tech.id}>
-                                  {tech.full_name || tech.email || 'Мастер #' + tech.id}
-                                </option>
-                              ))}
-                            </select>
+                          <td className="p-4 text-center">
+                            <div className="flex items-center justify-center gap-2 flex-wrap">
+                              <select 
+                                value={app.tech_id || ''} 
+                                onChange={(e) => {
+                                  const val = e.target.value;
+                                  setAppointments(appointments.map(a => a.id === app.id ? { ...a, tech_id: val } : a));
+                                }}
+                                className="bg-[#12131C] border border-slate-700 text-amber-400 font-bold px-2.5 py-1.5 rounded-lg text-xs focus:outline-none focus:border-amber-500 cursor-pointer"
+                              >
+                                <option value="">-- {t.selectTech} --</option>
+                                {techs.map(tech => (
+                                  <option key={tech.id} value={tech.id}>
+                                    {tech.full_name || tech.email || 'Мастер #' + tech.id}
+                                  </option>
+                                ))}
+                              </select>
 
-                            <button onClick={() => handleAssignAppointment(app.id, app.tech_id)} className="bg-amber-500 hover:bg-amber-400 text-slate-950 px-3 py-1.5 rounded-lg text-xs font-black transition shadow">
-                              {t.assign}
-                            </button>
+                              <button onClick={() => handleAssignAppointment(app.id, app.tech_id)} className="bg-amber-500 hover:bg-amber-400 text-slate-950 px-3 py-1.5 rounded-lg text-xs font-black transition shadow">
+                                {t.assign}
+                              </button>
 
-                            <button onClick={() => sendAppointmentToWhatsApp(app)} className="bg-[#25D366] hover:bg-[#20ba5a] text-white px-3 py-1.5 rounded-lg text-xs font-bold transition shadow">
-                              {t.whatsapp}
-                            </button>
+                              <button onClick={() => sendAppointmentToWhatsApp(app)} className="bg-[#25D366] hover:bg-[#20ba5a] text-white px-3 py-1.5 rounded-lg text-xs font-bold transition shadow">
+                                {t.whatsapp}
+                              </button>
 
-                            <button onClick={() => handleDeleteAppointment(app.id)} className="bg-red-500/20 hover:bg-red-600 text-red-400 hover:text-white px-3 py-1.5 rounded-lg text-xs font-bold transition border border-red-500/30">
-                              {t.delete}
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))
+                              <button onClick={() => handleDeleteAppointment(app.id)} className="bg-red-500/20 hover:bg-red-600 text-red-400 hover:text-white px-3 py-1.5 rounded-lg text-xs font-bold transition border border-red-500/30">
+                                {t.delete}
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })
                   )}
                 </tbody>
               </table>
@@ -610,39 +645,66 @@ export default function AdminPage() {
                     <th className="p-4">{t.techEmail}</th>
                     <th className="p-4">{t.techZips}</th>
                     <th className="p-4">{t.techStatus}</th>
+                    <th className="p-4">{t.reviewsTitle}</th>
                     <th className="p-4 text-center">{t.actions}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-800/60">
                   {techs.length === 0 ? (
                     <tr>
-                      <td colSpan={6} className="text-center p-8 text-slate-500 italic">{t.noTechs}</td>
+                      <td colSpan={7} className="text-center p-8 text-slate-500 italic">{t.noTechs}</td>
                     </tr>
                   ) : (
-                    techs.map((tech) => (
-                      <tr key={tech.id} className="hover:bg-slate-800/40 transition">
-                        <td className="p-4 font-bold">{tech.full_name || '-'}</td>
-                        <td className="p-4 text-amber-400 font-bold">{tech.phone || '-'}</td>
-                        <td className="p-4 text-sm text-slate-300">{tech.email || '-'}</td>
-                        <td className="p-4 text-sm font-mono text-slate-300">{tech.zip_codes || '-'}</td>
-                        <td className="p-4">
-                          <select 
-                            value={tech.subscription_status || 'pending'} 
-                            onChange={(e) => handleStatusChange(tech.id, e.target.value)}
-                            className="bg-[#12131C] border border-slate-700 text-amber-400 font-bold px-2.5 py-1 rounded-lg text-xs focus:outline-none focus:border-amber-500 cursor-pointer"
-                          >
-                            <option value="pending">PENDING</option>
-                            <option value="active">ACTIVE</option>
-                            <option value="rejected">REJECTED</option>
-                          </select>
-                        </td>
-                        <td className="p-4 text-center">
-                          <button onClick={() => handleDeleteTech(tech.id)} className="bg-red-500/20 hover:bg-red-600 text-red-400 hover:text-white px-3 py-1.5 rounded-lg text-xs font-bold transition border border-red-500/30">
-                            {t.delete}
-                          </button>
-                        </td>
-                      </tr>
-                    ))
+                    techs.map((tech) => {
+                      const techReviews = reviews.filter(rev => String(rev.tech_id).trim() === String(tech.id).trim());
+                      const avgRating = techReviews.length > 0 
+                        ? (techReviews.reduce((acc, r) => acc + Number(r.rating || 0), 0) / techReviews.length).toFixed(1) 
+                        : '0.0';
+
+                      return (
+                        <tr key={tech.id} className="hover:bg-slate-800/40 transition">
+                          <td className="p-4 font-bold">{tech.full_name || '-'}</td>
+                          <td className="p-4 text-amber-400 font-bold">{tech.phone || '-'}</td>
+                          <td className="p-4 text-sm text-slate-300">{tech.email || '-'}</td>
+                          <td className="p-4 text-sm font-mono text-slate-300">{tech.zip_codes || '-'}</td>
+                          
+                          <td className="p-4">
+                            <select 
+                              value={tech.subscription_status || 'pending'} 
+                              onChange={(e) => handleStatusChange(tech.id, e.target.value)}
+                              className="bg-[#12131C] border border-slate-700 text-amber-400 font-bold px-2.5 py-1 rounded-lg text-xs focus:outline-none focus:border-amber-500 cursor-pointer"
+                            >
+                              <option value="pending">PENDING</option>
+                              <option value="active">ACTIVE</option>
+                              <option value="rejected">REJECTED</option>
+                            </select>
+                          </td>
+
+                          <td className="p-4">
+                            <div className="space-y-1">
+                              <div className="text-amber-400 font-black text-xs flex items-center gap-1">
+                                ⭐ {avgRating} <span className="text-slate-400 font-normal">({techReviews.length} пікір)</span>
+                              </div>
+                              <div className="max-h-24 overflow-y-auto space-y-1 pr-1">
+                                {techReviews.map((rev, idx) => (
+                                  <div key={idx} className="bg-[#12131C] p-2 rounded-xl border border-slate-800 text-[11px]">
+                                    <div className="text-amber-400">{'⭐'.repeat(Number(rev.rating || 5))}</div>
+                                    <div className="text-slate-300 italic">"{rev.comment}"</div>
+                                  </div>
+                                ))}
+                                {techReviews.length === 0 && <span className="text-slate-500 text-xs italic">Пікірлер жоқ</span>}
+                              </div>
+                            </div>
+                          </td>
+
+                          <td className="p-4 text-center">
+                            <button onClick={() => handleDeleteTech(tech.id)} className="bg-red-500/20 hover:bg-red-600 text-red-400 hover:text-white px-3 py-1.5 rounded-lg text-xs font-bold transition border border-red-500/30">
+                              {t.delete}
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })
                   )}
                 </tbody>
               </table>

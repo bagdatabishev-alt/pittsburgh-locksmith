@@ -183,7 +183,8 @@ export default function MasterDashboard() {
 
       const masterIdStr = String(currentMaster.id).trim();
       const masterName = String(currentMaster.full_name || '').trim().toLowerCase();
-      const masterZips = currentMaster.zip_codes ? currentMaster.zip_codes.split(',').map((z: string) => z.trim().toLowerCase()) : [];
+      // Түзетілген жер (zip: any)
+      const masterZips = currentMaster.zip_codes ? currentMaster.zip_codes.split(',').map((zip: any) => String(zip).trim().toLowerCase()) : [];
 
       const processedRequests = (dbOrders || []).map(order => {
         const review = dbReviews?.find(r => String(r.order_id) === String(order.id));
@@ -213,11 +214,10 @@ export default function MasterDashboard() {
         const techIdStr = String(item.tech_id || '').trim();
         const itemAddress = String(item.address || item.note || '').trim().toLowerCase();
 
-        // Админ панельден берілген ID дәл сәйкес келуін тексереміз
         const isAssigned = techIdStr === masterIdStr || 
                            techIdStr.toLowerCase() === masterName;
 
-        const isMatchingZip = masterZips.some(zip => itemAddress.includes(zip));
+        const isMatchingZip = masterZips.some((zip: string) => itemAddress.includes(zip));
 
         return isAssigned || (!item.tech_id && isMatchingZip);
       };
@@ -562,7 +562,8 @@ export default function MasterDashboard() {
               </div>
             ) : (
               <div className="space-y-4">
-                {completedOrders.comap?.map?.((order: any) => null) || completedOrders.map((order) => (
+                {/* Түзетілген жер (completedOrders.comap орнына completedOrders.map) */}
+                {completedOrders.map((order) => (
                   <div key={`comp-${order.sourceType}-${order.id}`} className="bg-[#12131C] p-5 rounded-2xl border border-slate-800">
                     <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                       <div>

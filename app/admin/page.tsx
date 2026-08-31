@@ -201,7 +201,7 @@ export default function AdminPage() {
       if (!appError && dbAppointments) {
         const formattedApp = dbAppointments.map(a => ({
           id: a.id,
-          name: a.name,
+          name: a.client_name || a.name,
           phone: a.phone,
           service: a.service,
           date_time: a.date_time || a.appointment_date || '-',

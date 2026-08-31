@@ -194,7 +194,7 @@ export default function MasterDashboard() {
         const review = dbReviews?.find(r => String(r.order_id) === String(app.id));
         return { 
           id: app.id,
-          name: app.name,
+          name: app.client_name || app.name,
           phone: app.phone,
           service: app.service || app.service_type || 'Appointment Service',
           address: app.address || app.note,

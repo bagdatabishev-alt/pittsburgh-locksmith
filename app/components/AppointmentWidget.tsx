@@ -11,10 +11,13 @@ const t = {
       phone: 'Phone Number *',
       date: 'Date *',
       time: 'Time *',
+      service: 'Service *',
+      serviceOptions: ['Emergency Lockout', 'Car Locksmith', 'Residential Locksmith', 'Commercial Locksmith', 'Key Replacement', 'Lock Repair'],
       note: 'Note (Optional)',
       notePlaceholder: 'Describe your issue...',
       btn: 'Confirm Appointment',
-      success: 'Successfully booked!'
+      success: 'Successfully booked!',
+      errorMsg: 'An error occurred. Please try again.'
     },
     ru: {
       title: 'Запись на прием',
@@ -23,10 +26,13 @@ const t = {
       phone: 'Номер телефона *',
       date: 'Дата *',
       time: 'Время *',
+      service: 'Услуга *',
+      serviceOptions: ['Экстренное вскрытие', 'Автомобильный замок', 'Жилой замок', 'Коммерческий замок', 'Замена ключей', 'Ремонт замка'],
       note: 'Примечание (необязательно)',
       notePlaceholder: 'Опишите вашу проблему...',
       btn: 'Подтвердить запись',
-      success: 'Успешно забронировано!'
+      success: 'Успешно забронировано!',
+      errorMsg: 'Произошла ошибка. Попробуйте снова.'
     },
     kk: {
       title: 'Қызметке Жазылу',
@@ -38,7 +44,10 @@ const t = {
       note: 'Қосымша ескерту',
       notePlaceholder: 'Мәселені қысқаша жазыңыз...',
       btn: 'Брондауды Растау',
-      success: 'Сәтті брондалды!'
+      success: 'Сәтті брондалды!',
+      service: 'Қызмет түрі *',
+      serviceOptions: ['Шұғыл ашу', 'Автокөлік құлпы', 'Тұрғын үй құлпы', 'Коммерциялық құлып', 'Кілт ауыстыру', 'Құлыпты жөндеу'],
+      errorMsg: 'Қате орын алды. Қайта көріңіз.'
     }
   }[lang] || {
     title: 'Appointment',
@@ -47,14 +56,18 @@ const t = {
     phone: 'Phone Number *',
     date: 'Date *',
     time: 'Time *',
+    service: 'Service *',
+    serviceOptions: ['Emergency Lockout', 'Car Locksmith', 'Residential Locksmith', 'Commercial Locksmith', 'Key Replacement', 'Lock Repair'],
     note: 'Note (Optional)',
     notePlaceholder: 'Describe your issue...',
     btn: 'Confirm Appointment',
-    success: 'Successfully booked!'
+    success: 'Successfully booked!',
+    errorMsg: 'An error occurred. Please try again.'
   };
   const [formData, setFormData] = useState({
     name: '',
     phone: '',
+    service: '',
     date: '',
     time: '',
     note: ''
@@ -71,6 +84,7 @@ const t = {
         {
           client_name: formData.name,
           phone: formData.phone,
+          service: formData.service,
           appointment_date: formData.date,
           appointment_time: formData.time,
           note: formData.note,
@@ -81,10 +95,10 @@ const t = {
       if (error) throw error;
 
       setSuccessMsg(true);
-      setFormData({ name: '', phone: '', date: '', time: '', note: '' });
+      setFormData({ name: '', phone: '', service: '', date: '', time: '', note: '' });
     } catch (err) {
       console.error('Booking error:', err);
-      alert('Қате орын алды. Қайта көріңіз.');
+      alert(t.errorMsg);
     } finally {
       setLoading(false);
     }
@@ -127,6 +141,21 @@ const t = {
               onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
               className="w-full bg-[#12131C] border border-slate-700 rounded-xl p-3 text-sm text-white focus:outline-none focus:border-amber-500"
             />
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold text-slate-400 mb-1">{t.service}</label>
+            <select
+              required
+              value={formData.service}
+              onChange={(e) => setFormData({ ...formData, service: e.target.value })}
+              className="w-full bg-[#12131C] border border-slate-700 rounded-xl p-3 text-sm text-white focus:outline-none focus:border-amber-500"
+            >
+              <option value="" disabled>{t.service}</option>
+              {t.serviceOptions.map((opt: string) => (
+                <option key={opt} value={opt}>{opt}</option>
+              ))}
+            </select>
           </div>
 
           <div className="grid grid-cols-2 gap-2">

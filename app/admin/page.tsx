@@ -42,7 +42,11 @@ const DICT = {
     whatsapp: 'WhatsApp 📲',
     selectTech: 'Шеберді таңдаңыз',
     statusHeader: 'Статус (Мастер жауабы)',
-    reviewsTitle: 'Пікірлер мен Рейтинг'
+    reviewsTitle: 'Пікірлер мен Рейтинг',
+    noReviewsList: 'Әзірге пікірлер жоқ.',
+    ratingLabel: 'Рейтинг',
+    commentLabel: 'Пікір',
+    orderLabel: 'Тапсырыс №'
   },
   ru: {
     title: 'Панель управления сайтом',
@@ -83,7 +87,11 @@ const DICT = {
     whatsapp: 'WhatsApp 📲',
     selectTech: 'Выберите мастера',
     statusHeader: 'Status (Ответ мастера)',
-    reviewsTitle: 'Отзывы и Рейтинг'
+    reviewsTitle: 'Отзывы и Рейтинг',
+    noReviewsList: 'Отзывов пока нет.',
+    ratingLabel: 'Рейтинг',
+    commentLabel: 'Отзыв',
+    orderLabel: 'Заказ №'
   },
   en: {
     title: 'Site Control Panel',
@@ -124,7 +132,11 @@ const DICT = {
     whatsapp: 'WhatsApp 📲',
     selectTech: 'Select Tech',
     statusHeader: 'Status (Tech Reply)',
-    reviewsTitle: 'Reviews & Ratings'
+    reviewsTitle: 'Reviews & Ratings',
+    noReviewsList: 'No reviews yet.',
+    ratingLabel: 'Rating',
+    commentLabel: 'Comment',
+    orderLabel: 'Order #'
   }
 };
 
@@ -140,7 +152,7 @@ export default function AdminPage() {
   const [appointments, setAppointments] = useState<any[]>([]);
   const [techs, setTechs] = useState<any[]>([]);
   const [reviews, setReviews] = useState<any[]>([]);
-  const [activeTab, setActiveTab] = useState<'requests' | 'appointments' | 'techs' | 'prices' | 'settings'>('requests');
+  const [activeTab, setActiveTab] = useState<'requests' | 'appointments' | 'techs' | 'reviews' | 'prices' | 'settings'>('requests');
   const [savedMsg, setSavedMsg] = useState('');
 
   const [prices, setPrices] = useState({
@@ -343,6 +355,17 @@ export default function AdminPage() {
     }
   };
 
+  const handleDeleteReview = async (id: number | string) => {
+    if (confirm('Бұл пікірді өшіргіңіз келе ме?')) {
+      setReviews(reviews.filter(r => r.id !== id));
+      try {
+        await supabase.from('reviews').delete().eq('id', id);
+      } catch (err) {
+        console.error('Supabase delete review error:', err);
+      }
+    }
+  };
+
   const handleStatusChange = async (id: number | string, newStatus: string) => {
     setTechs(techs.map(t => t.id === id ? { ...t, subscription_status: newStatus } : t));
     try {
@@ -421,6 +444,9 @@ export default function AdminPage() {
             </button>
             <button onClick={() => setActiveTab('techs')} className={`px-3.5 py-2 rounded-xl text-xs font-bold transition ${activeTab === 'techs' ? 'bg-amber-500 text-slate-950 shadow-lg' : 'bg-slate-800 text-slate-300'}`}>
               {t.techs} ({techs.length})
+            </button>
+            <button onClick={() => setActiveTab('reviews')} className={`px-3.5 py-2 rounded-xl text-xs font-bold transition ${activeTab === 'reviews' ? 'bg-amber-500 text-slate-950 shadow-lg' : 'bg-slate-800 text-slate-300'}`}>
+              {t.reviewsTitle} ({reviews.length})
             </button>
             <button onClick={() => setActiveTab('prices')} className={`px-3.5 py-2 rounded-xl text-xs font-bold transition ${activeTab === 'prices' ? 'bg-amber-500 text-slate-950 shadow-lg' : 'bg-slate-800 text-slate-300'}`}>
               {t.prices}
@@ -699,6 +725,51 @@ export default function AdminPage() {
 
                           <td className="p-4 text-center">
                             <button onClick={() => handleDeleteTech(tech.id)} className="bg-red-500/20 hover:bg-red-600 text-red-400 hover:text-white px-3 py-1.5 rounded-lg text-xs font-bold transition border border-red-500/30">
+                              {t.delete}
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'reviews' && (
+          <div className="bg-[#181926] rounded-3xl p-6 border border-slate-800 shadow-xl">
+            <h2 className="text-xl font-extrabold mb-6 text-amber-500">{t.reviewsTitle}</h2>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="border-b border-slate-800 text-slate-400 text-xs uppercase tracking-wider">
+                    <th className="p-4">{t.orderLabel}</th>
+                    <th className="p-4">{t.techName}</th>
+                    <th className="p-4">{t.ratingLabel}</th>
+                    <th className="p-4">{t.commentLabel}</th>
+                    <th className="p-4">{t.date}</th>
+                    <th className="p-4 text-center">{t.actions}</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-800/60">
+                  {reviews.length === 0 ? (
+                    <tr>
+                      <td colSpan={6} className="text-center p-8 text-slate-500 italic">{t.noReviewsList}</td>
+                    </tr>
+                  ) : (
+                    reviews.map((rev) => {
+                      const matchedTech = techs.find(tc => String(tc.id).trim() === String(rev.tech_id).trim());
+                      return (
+                        <tr key={rev.id} className="hover:bg-slate-800/40 transition">
+                          <td className="p-4 font-bold text-amber-400">#{rev.order_id}</td>
+                          <td className="p-4 text-sm text-slate-300">{matchedTech?.full_name || matchedTech?.email || ('#' + rev.tech_id)}</td>
+                          <td className="p-4 text-amber-400 font-bold whitespace-nowrap">{'⭐'.repeat(Number(rev.rating || 0))}</td>
+                          <td className="p-4 text-sm text-slate-300 italic max-w-sm">"{rev.comment}"</td>
+                          <td className="p-4 text-xs text-slate-400 whitespace-nowrap">{rev.created_at ? new Date(rev.created_at).toLocaleString() : '-'}</td>
+                          <td className="p-4 text-center">
+                            <button onClick={() => handleDeleteReview(rev.id)} className="bg-red-500/20 hover:bg-red-600 text-red-400 hover:text-white px-3 py-1.5 rounded-lg text-xs font-bold transition border border-red-500/30">
                               {t.delete}
                             </button>
                           </td>
